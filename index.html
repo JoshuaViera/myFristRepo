@@ -3,18 +3,23 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>My First Repo</title>
+    <title>Joshua's First AI Webpage</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <header>
-      <h1>Welcome to My First Repo</h1>
-    </header>
+    <div class="page">
+      <div class="container" role="main" aria-labelledby="site-title">
+        <div class="top-row">
+          <div class="title" id="site-title">joshua's First Ai Webpage using GitHub</div>
+          <div class="datetime" id="datetime">--:--:--</div>
+        </div>
 
-    <main>
-      <p>This is a basic index.html file created for the project.</p>
-      <button id="helloBtn">Say Hello</button>
-    </main>
+        <div class="content">
+          <p class="intro">Welcome — this is a small demo page.</p>
+          <button id="themeBtn" class="btn-futuristic" aria-pressed="false">Toggle Theme</button>
+        </div>
+      </div>
+    </div>
 
     <script src="script.js" defer></script>
   </body>
