@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Joshua's First AI Webpage</title>
+    <title>Quotes — Joshua's First AI Webpage</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -11,20 +11,25 @@
       <div class="container" role="main" aria-labelledby="site-title">
         <div class="top-row">
           <div class="date-left" id="date">-- -- ----</div>
-          <div class="title" id="site-title">joshua's First Ai Webpage using GitHub</div>
+          <div class="title" id="site-title">Random Quotes</div>
           <div class="time-right" id="time-ny">--:--:--</div>
         </div>
 
         <div class="content">
-          <p class="intro">Welcome  this is a small demo page.</p>
+          <p class="intro">Click the button to get a new quote.</p>
+          <div class="quote-box" id="quote-box">
+            <blockquote id="quote">"Be yourself; everyone else is already taken."</blockquote>
+            <cite id="author">— Oscar Wilde</cite>
+          </div>
+
           <div class="controls">
-            <button id="themeBtn" class="btn-futuristic" aria-pressed="false">Toggle Theme</button>
-            <a class="btn-futuristic" href="quote.html">Quotes</a>
+            <button id="newQuoteBtn" class="btn-futuristic">New Quote</button>
+            <a class="btn-futuristic" href="index.html">Home</a>
           </div>
         </div>
       </div>
     </div>
 
-    <script src="script.js" defer></script>
+    <script src="quote.js" defer></script>
   </body>
 </html>
