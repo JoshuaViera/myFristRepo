@@ -40,14 +40,27 @@ html,body{
 
 .top-row{
   display:flex;
-  justify-content:space-between;
   align-items:flex-start;
+  gap:1rem;
 }
 
 .title{
   font-size:1.1rem;
   font-weight:700;
   color:var(--text);
+}
+
+.date-left{
+  font-size:0.95rem;
+  color:var(--text);
+  align-self:flex-start;
+}
+
+.time-right{
+  margin-left:auto;
+  font-size:0.95rem;
+  color:var(--text);
+  text-align:right;
 }
 
 .datetime{
@@ -62,6 +75,12 @@ html,body{
   display:flex;
   flex-direction:column;
   gap:1rem;
+}
+
+.controls{
+  display:flex;
+  gap:0.75rem;
+  align-items:center;
 }
 
 .intro{

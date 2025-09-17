@@ -1,16 +1,36 @@
 // Update time/date every second and handle theme toggle
 (function(){
-  const dtEl = document.getElementById('datetime');
+  const dateEl = document.getElementById('date');
+  const nyTimeEl = document.getElementById('time-ny');
   const btn = document.getElementById('themeBtn');
   const root = document.documentElement;
 
   function pad(n){ return n.toString().padStart(2,'0'); }
 
-  function updateDateTime(){
+  function updateDateAndTime(){
     const now = new Date();
-    const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-    const date = now.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
-    dtEl.textContent = `${time} — ${date}`;
+    // local date (top-left)
+    const localDate = now.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+    dateEl.textContent = localDate;
+
+    // New York time in standard (12-hour) format with AM/PM
+    try{
+      const nyFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+      });
+      const parts = nyFormatter.format(now);
+      nyTimeEl.textContent = parts;
+    }catch(e){
+      // fallback: compute offset from UTC (not reliable for DST)
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const nyOffset = -4; // assume EDT default; best-effort fallback
+      const ny = new Date(utc + (3600000 * nyOffset));
+      const hours = ny.getHours();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const h12 = ((hours + 11) % 12) + 1;
+      nyTimeEl.textContent = `${h12}:${pad(ny.getMinutes())}:${pad(ny.getSeconds())} ${ampm}`;
+    }
   }
 
   let alt = false;
@@ -38,7 +58,7 @@
 
   btn.addEventListener('click', toggleTheme);
 
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
+  updateDateAndTime();
+  setInterval(updateDateAndTime, 1000);
 
 })();
