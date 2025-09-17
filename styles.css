@@ -1,0 +1,131 @@
+/* Base page */
+:root{
+  --bg: #000000;
+  --container-bg: rgba(255,255,255,0.03);
+  --text: #ffffff;
+  --accent: linear-gradient(135deg,#bdbdbd,#f5f5f5);
+  --button-bg: linear-gradient(180deg,#cfcfcf,#a6a6a6);
+  --button-border: #e6e6e6;
+  --futuristic-shadow: 0 6px 18px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+html,body{
+  height:100%;
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+.page{
+  min-height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:2rem;
+}
+
+.container{
+  width:min(880px,94vw);
+  background:var(--container-bg);
+  border-radius:12px;
+  padding:1.5rem 2rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: transform 360ms cubic-bezier(.2,.9,.2,1), background-color 360ms ease, color 360ms ease;
+}
+
+.top-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+
+.title{
+  font-size:1.1rem;
+  font-weight:700;
+  color:var(--text);
+}
+
+.datetime{
+  font-size:0.95rem;
+  color:var(--text);
+  opacity:0.9;
+  text-align:right;
+}
+
+.content{
+  margin-top:2rem;
+  display:flex;
+  flex-direction:column;
+  gap:1rem;
+}
+
+.intro{
+  margin:0;
+  color:var(--text);
+}
+
+/* Silver futuristic button */
+.btn-futuristic{
+  display:inline-block;
+  align-self:flex-start;
+  padding:0.8rem 1.25rem;
+  border-radius:10px;
+  background:var(--button-bg);
+  border: 1px solid var(--button-border);
+  color:#111;
+  font-weight:700;
+  letter-spacing:0.6px;
+  cursor:pointer;
+  box-shadow: var(--futuristic-shadow);
+  transition: transform .12s ease, box-shadow .12s ease, background .18s ease;
+}
+
+.btn-futuristic:active{
+  transform:translateY(1px) scale(.997);
+}
+
+.btn-futuristic:focus{
+  outline:2px solid rgba(255,255,255,0.08);
+  outline-offset:3px;
+}
+
+/* Alternate theme toggled by JS */
+.theme-alt{
+  --bg: #0b1220; /* deep blue */
+  --container-bg: rgba(255,255,255,0.02);
+  --text: #e6f1ff;
+}
+
+.theme-alt .container{
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* theme transition helper class toggled by JS */
+.theme-transition .container{
+  animation: container-pop .44s cubic-bezier(.2,.9,.2,1);
+}
+
+@keyframes container-pop{
+  0% { transform: translateY(0) scale(1); filter: blur(0); }
+  30% { transform: translateY(-8px) scale(1.02); }
+  70% { transform: translateY(2px) scale(.995); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* smooth background transition */
+html,body{ transition: background-color 420ms ease; }
+
+/* make text white explicitly where needed */
+.container, .container *{
+  color:var(--text);
+}
+
+@media (max-width:480px){
+  .container{ padding:1rem; }
+  .title{ font-size:1rem }
+}
