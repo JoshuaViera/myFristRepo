@@ -917,6 +917,55 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Keyboard controls
     document.addEventListener('keydown', handleSnakeKeyPress);
+
+    // Touch controls for mobile: detect swipes on the snake canvas
+    let touchStartX = null;
+    let touchStartY = null;
+
+    function onSnakeTouchStart(e) {
+      const t = e.touches[0];
+      if (!t) return;
+      const rect = snakeCanvas.getBoundingClientRect();
+      touchStartX = t.clientX - rect.left;
+      touchStartY = t.clientY - rect.top;
+      e.preventDefault();
+    }
+
+    function onSnakeTouchMove(e) {
+      if (!touchStartX || !touchStartY) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const rect = snakeCanvas.getBoundingClientRect();
+      const moveX = (t.clientX - rect.left) - touchStartX;
+      const moveY = (t.clientY - rect.top) - touchStartY;
+
+      // determine primary direction of swipe
+      if (Math.abs(moveX) > Math.abs(moveY)) {
+        // horizontal swipe
+        if (moveX > 20) {
+          // swipe right
+          if (direction.x === 0) nextDirection = { x: 1, y: 0 };
+        } else if (moveX < -20) {
+          // swipe left
+          if (direction.x === 0) nextDirection = { x: -1, y: 0 };
+        }
+      } else {
+        // vertical swipe
+        if (moveY > 20) {
+          // swipe down
+          if (direction.y === 0) nextDirection = { x: 0, y: 1 };
+        } else if (moveY < -20) {
+          // swipe up
+          if (direction.y === 0) nextDirection = { x: 0, y: -1 };
+        }
+      }
+
+      // prevent page scroll while interacting
+      e.preventDefault();
+    }
+
+    snakeCanvas.addEventListener('touchstart', onSnakeTouchStart, { passive: false });
+    snakeCanvas.addEventListener('touchmove', onSnakeTouchMove, { passive: false });
     
     // Update high score display
     document.getElementById('snake-high-score').textContent = highScore;
@@ -1230,6 +1279,70 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Keyboard controls
     document.addEventListener('keydown', handlePingPongKeyPress);
+
+    // Mouse control toggle (drag-only to avoid accidental movement)
+    const mouseToggle = document.getElementById('mouseControlToggle');
+    let mouseControlEnabled = false;
+    let dragging = false;
+    let mouseMoveHandler = (e) => {
+      if (!dragging) return;
+      const rect = pingpongCanvas.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      playerPaddle.y = Math.max(0, Math.min(pingpongCanvas.height - playerPaddle.height, y - playerPaddle.height / 2));
+      updatePingPongDisplay();
+      drawPingPongGame();
+    };
+
+    let touchMoveHandler = (e) => {
+      if (!mouseControlEnabled) return;
+      const rect = pingpongCanvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      if (!touch) return;
+      const y = touch.clientY - rect.top;
+      playerPaddle.y = Math.max(0, Math.min(pingpongCanvas.height - playerPaddle.height, y - playerPaddle.height / 2));
+      updatePingPongDisplay();
+      drawPingPongGame();
+      e.preventDefault();
+    };
+
+    if (mouseToggle) {
+      mouseToggle.addEventListener('change', (ev) => {
+        mouseControlEnabled = ev.target.checked;
+        if (!mouseControlEnabled) {
+          // ensure dragging state cleared
+          dragging = false;
+          pingpongCanvas.removeEventListener('mousemove', mouseMoveHandler);
+          pingpongCanvas.removeEventListener('mouseup', onMouseUp);
+          pingpongCanvas.removeEventListener('mouseleave', onMouseUp);
+          pingpongCanvas.removeEventListener('touchmove', touchMoveHandler);
+        } else {
+          // attach listeners for drag and touch
+          pingpongCanvas.addEventListener('mousemove', mouseMoveHandler);
+          pingpongCanvas.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        }
+      });
+    }
+
+    function onMouseDown(e) {
+      if (!mouseControlEnabled) return;
+      dragging = true;
+      mouseMoveHandler(e);
+    }
+
+    function onMouseUp() {
+      dragging = false;
+    }
+
+    // Attach drag start/end handlers to canvas
+    pingpongCanvas.addEventListener('mousedown', onMouseDown);
+    pingpongCanvas.addEventListener('mouseup', onMouseUp);
+    pingpongCanvas.addEventListener('mouseleave', onMouseUp);
+    // Touch equivalents: touching the canvas enables direct control (if toggle on)
+    pingpongCanvas.addEventListener('touchstart', (e) => {
+      if (!mouseControlEnabled) return;
+      touchMoveHandler(e);
+    }, { passive: false });
+
     
     // Initial draw
     drawPingPongGame();
@@ -1414,12 +1527,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     switch(e.code) {
       case 'ArrowUp':
+        // ArrowUp moves up faster
+        playerPaddle.y = Math.max(0, playerPaddle.y - Math.round(playerPaddle.speed * 1.8));
+        e.preventDefault();
+        break;
       case 'KeyW':
-        playerPaddle.y = Math.max(0, playerPaddle.y - playerPaddle.speed);
+        // W moves up even slightly faster for responsiveness
+        playerPaddle.y = Math.max(0, playerPaddle.y - Math.round(playerPaddle.speed * 2));
         e.preventDefault();
         break;
       case 'ArrowDown':
       case 'KeyS':
+        // If mouse/drag control is enabled, ignore keyboard down to prevent conflict
+        if (document.getElementById('mouseControlToggle')?.checked) break;
         playerPaddle.y = Math.min(pingpongCanvas.height - playerPaddle.height, playerPaddle.y + playerPaddle.speed);
         e.preventDefault();
         break;

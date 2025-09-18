@@ -492,10 +492,12 @@ html,body{ transition: background-color 420ms ease; }
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.2);
   outline: none;
+  appearance: none;
   -webkit-appearance: none;
 }
 
 .slider-container input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
   -webkit-appearance: none;
   width: 18px;
   height: 18px;
@@ -742,6 +744,9 @@ canvas {
   background: rgba(0, 0, 0, 0.8);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
+  width: 600px; /* wider, matches updated attribute */
+  height: 400px; /* keep same height */
+  max-width: calc(100vw - 64px); /* prevent overflow, leave some padding */
 }
 
 .snake-controls {
@@ -1050,6 +1055,22 @@ canvas {
   
   .snake-controls .btn-futuristic {
     width: 200px;
+  }
+
+  /* Make pingpong canvas and touch targets friendlier */
+  .pingpong-controls .btn-futuristic,
+  .snake-controls .btn-futuristic,
+  .galaga-controls .btn-futuristic {
+    padding: 1rem 1.2rem;
+    height: 48px;
+    font-size: 1rem;
+  }
+
+  /* Ensure canvases scale to viewport and remain high-DPI friendly */
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100%;
   }
   
   .speed-buttons {
