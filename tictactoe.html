@@ -56,6 +56,43 @@
             <a class="btn-futuristic" href="index.html">Home</a>
             <a class="btn-futuristic" href="quote.html">Interactive Showcase</a>
           </div>
+
+          <!-- Snake Game Section -->
+          <div class="game-divider">
+            <h3>Snake Game</h3>
+            <p>Use arrow keys or WASD to control the snake. Eat food to grow and increase your score!</p>
+          </div>
+
+          <div class="snake-game-container">
+            <div class="snake-score-display">
+              <div class="score-item">
+                <span class="player-label">Score:</span>
+                <span class="score-value" id="snake-score">0</span>
+              </div>
+              <div class="score-item">
+                <span class="player-label">High Score:</span>
+                <span class="score-value" id="snake-high-score">0</span>
+              </div>
+              <div class="score-item">
+                <span class="player-label">Length:</span>
+                <span class="score-value" id="snake-length">1</span>
+              </div>
+            </div>
+
+            <div class="snake-game-status" id="snake-game-status">Press SPACE to start</div>
+
+            <canvas id="snakeCanvas" width="400" height="400"></canvas>
+
+            <div class="snake-controls">
+              <button id="startSnakeBtn" class="btn-futuristic">Start Game</button>
+              <button id="pauseSnakeBtn" class="btn-futuristic">Pause</button>
+              <button id="resetSnakeBtn" class="btn-futuristic">Reset</button>
+            </div>
+
+            <div class="snake-instructions">
+              <p><strong>Controls:</strong> Arrow Keys or WASD to move • SPACE to start/pause</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

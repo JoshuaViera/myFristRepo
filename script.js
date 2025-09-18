@@ -629,6 +629,8 @@
   let matrixAnimationId;
   let matrixColors = ['#00ff00', '#00ff88', '#88ff00'];
   let currentColorIndex = 0;
+  let isGlitching = false;
+  let glitchTimer = 0;
 
   function initMatrixRain() {
     matrixCanvas = document.getElementById('matrixCanvas');
@@ -649,7 +651,7 @@
     // Event listeners
     document.getElementById('toggleMatrix')?.addEventListener('click', toggleMatrixRain);
     document.getElementById('changeColor')?.addEventListener('click', changeMatrixColor);
-    document.getElementById('changeSpeed')?.addEventListener('click', changeMatrixSpeed);
+    document.getElementById('glitchEffect')?.addEventListener('click', triggerGlitchEffect);
     
     const intensitySlider = document.getElementById('intensitySlider');
     const intensityValue = document.getElementById('intensityValue');
@@ -665,15 +667,46 @@
   function animateMatrixRain() {
     if (!matrixCtx) return;
     
-    matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-    matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
-    
-    matrixCtx.fillStyle = matrixColors[currentColorIndex];
+    // Handle glitch effect
+    if (isGlitching) {
+      glitchTimer--;
+      if (glitchTimer <= 0) {
+        isGlitching = false;
+      }
+      
+      // Glitch effect: random screen disruption
+      if (Math.random() > 0.7) {
+        matrixCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+        matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+        
+        // Add random static lines
+        matrixCtx.strokeStyle = '#ff0000';
+        matrixCtx.lineWidth = 2;
+        for (let i = 0; i < 10; i++) {
+          matrixCtx.beginPath();
+          matrixCtx.moveTo(Math.random() * matrixCanvas.width, Math.random() * matrixCanvas.height);
+          matrixCtx.lineTo(Math.random() * matrixCanvas.width, Math.random() * matrixCanvas.height);
+          matrixCtx.stroke();
+        }
+      }
+      
+      // Corrupted text effect
+      matrixCtx.fillStyle = isGlitching ? '#ff0000' : matrixColors[currentColorIndex];
+    } else {
+      matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+      matrixCtx.fillStyle = matrixColors[currentColorIndex];
+    }
     
     matrixChars.forEach((char, index) => {
       const x = index * 15;
       
-      matrixCtx.fillText(char.char, x, char.y);
+      if (isGlitching && Math.random() > 0.8) {
+        // Corrupted characters during glitch
+        matrixCtx.fillText('█', x, char.y);
+      } else {
+        matrixCtx.fillText(char.char, x, char.y);
+      }
       
       if (char.y > matrixCanvas.height && Math.random() > 0.975) {
         char.y = 0;
@@ -704,10 +737,19 @@
     currentColorIndex = (currentColorIndex + 1) % matrixColors.length;
   }
 
-  function changeMatrixSpeed() {
-    matrixChars.forEach(char => {
-      char.speed = Math.random() * 3 + 0.5;
-    });
+  function triggerGlitchEffect() {
+    isGlitching = true;
+    glitchTimer = 60; // 60 frames of glitch effect
+    
+    // Visual feedback on button
+    const button = document.getElementById('glitchEffect');
+    button.style.background = 'linear-gradient(135deg, #ff0000, #ff4444)';
+    button.textContent = 'GLITCHING...';
+    
+    setTimeout(() => {
+      button.style.background = '';
+      button.textContent = 'Glitch Effect';
+    }, 1000);
   }
 
   function updateMatrixIntensity(intensity) {
@@ -742,6 +784,268 @@
   if (document.querySelector('.demo-tab.active')) {
     const activeDemo = document.querySelector('.demo-tab.active').dataset.demo;
     initializeDemo(activeDemo);
+  }
+
+  // ===== SNAKE GAME FUNCTIONALITY =====
+  let snakeCanvas, snakeCtx;
+  let snake = [];
+  let food = {};
+  let direction = { x: 0, y: 0 };
+  let nextDirection = { x: 0, y: 0 };
+  let gameRunning = false;
+  let gamePaused = false;
+  let score = 0;
+  let highScore = localStorage.getItem('snakeHighScore') || 0;
+  let gameSpeed = 150;
+  let gameLoop;
+
+  function initSnakeGame() {
+    snakeCanvas = document.getElementById('snakeCanvas');
+    if (!snakeCanvas) return;
+    
+    snakeCtx = snakeCanvas.getContext('2d');
+    
+    // Initialize game state
+    resetSnakeGame();
+    
+    // Event listeners
+    document.getElementById('startSnakeBtn')?.addEventListener('click', startSnakeGame);
+    document.getElementById('pauseSnakeBtn')?.addEventListener('click', pauseSnakeGame);
+    document.getElementById('resetSnakeBtn')?.addEventListener('click', resetSnakeGame);
+    
+    // Keyboard controls
+    document.addEventListener('keydown', handleSnakeKeyPress);
+    
+    // Update high score display
+    document.getElementById('snake-high-score').textContent = highScore;
+    
+    // Initial draw
+    drawSnakeGame();
+  }
+
+  function resetSnakeGame() {
+    snake = [{ x: 10, y: 10 }];
+    direction = { x: 0, y: 0 };
+    nextDirection = { x: 0, y: 0 };
+    score = 0;
+    gameRunning = false;
+    gamePaused = false;
+    
+    if (gameLoop) {
+      clearInterval(gameLoop);
+      gameLoop = null;
+    }
+    
+    generateFood();
+    updateSnakeDisplay();
+    updateSnakeGameStatus('Press SPACE or click Start to begin');
+    drawSnakeGame();
+  }
+
+  function startSnakeGame() {
+    if (!gameRunning && !gamePaused) {
+      direction = { x: 1, y: 0 }; // Start moving right
+      nextDirection = { x: 1, y: 0 };
+    }
+    
+    gameRunning = true;
+    gamePaused = false;
+    updateSnakeGameStatus('Game Running');
+    
+    if (!gameLoop) {
+      gameLoop = setInterval(gameUpdate, gameSpeed);
+    }
+  }
+
+  function pauseSnakeGame() {
+    if (gameRunning) {
+      gamePaused = !gamePaused;
+      updateSnakeGameStatus(gamePaused ? 'Game Paused' : 'Game Running');
+      
+      if (gamePaused) {
+        clearInterval(gameLoop);
+        gameLoop = null;
+      } else {
+        gameLoop = setInterval(gameUpdate, gameSpeed);
+      }
+    }
+  }
+
+  function generateFood() {
+    const gridSize = 20;
+    const canvasWidth = snakeCanvas.width / gridSize;
+    const canvasHeight = snakeCanvas.height / gridSize;
+    
+    do {
+      food = {
+        x: Math.floor(Math.random() * canvasWidth),
+        y: Math.floor(Math.random() * canvasHeight)
+      };
+    } while (snake.some(segment => segment.x === food.x && segment.y === food.y));
+  }
+
+  function gameUpdate() {
+    if (!gameRunning || gamePaused) return;
+    
+    // Update direction
+    direction = { ...nextDirection };
+    
+    // Move snake head
+    const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+    
+    // Check wall collision
+    if (head.x < 0 || head.x >= snakeCanvas.width / 20 || 
+        head.y < 0 || head.y >= snakeCanvas.height / 20) {
+      gameOver();
+      return;
+    }
+    
+    // Check self collision
+    if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+      gameOver();
+      return;
+    }
+    
+    snake.unshift(head);
+    
+    // Check food collision
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      generateFood();
+      updateSnakeDisplay();
+    } else {
+      snake.pop();
+    }
+    
+    drawSnakeGame();
+  }
+
+  function gameOver() {
+    gameRunning = false;
+    gamePaused = false;
+    
+    if (gameLoop) {
+      clearInterval(gameLoop);
+      gameLoop = null;
+    }
+    
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('snakeHighScore', highScore);
+      document.getElementById('snake-high-score').textContent = highScore;
+    }
+    
+    updateSnakeGameStatus(`Game Over! Final Score: ${score}`);
+    drawSnakeGame();
+  }
+
+  function drawSnakeGame() {
+    if (!snakeCtx) return;
+    
+    // Clear canvas
+    snakeCtx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+    
+    // Draw grid
+    snakeCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    snakeCtx.lineWidth = 1;
+    
+    for (let x = 0; x < snakeCanvas.width; x += 20) {
+      snakeCtx.beginPath();
+      snakeCtx.moveTo(x, 0);
+      snakeCtx.lineTo(x, snakeCanvas.height);
+      snakeCtx.stroke();
+    }
+    
+    for (let y = 0; y < snakeCanvas.height; y += 20) {
+      snakeCtx.beginPath();
+      snakeCtx.moveTo(0, y);
+      snakeCtx.lineTo(snakeCanvas.width, y);
+      snakeCtx.stroke();
+    }
+    
+    // Draw snake
+    snake.forEach((segment, index) => {
+      if (index === 0) {
+        // Snake head
+        snakeCtx.fillStyle = gameRunning ? '#00ff88' : '#ff4444';
+        snakeCtx.fillRect(segment.x * 20 + 2, segment.y * 20 + 2, 16, 16);
+        
+        // Eyes
+        snakeCtx.fillStyle = '#ffffff';
+        snakeCtx.fillRect(segment.x * 20 + 5, segment.y * 20 + 5, 3, 3);
+        snakeCtx.fillRect(segment.x * 20 + 12, segment.y * 20 + 5, 3, 3);
+      } else {
+        // Snake body
+        const alpha = 1 - (index / snake.length) * 0.5;
+        snakeCtx.fillStyle = `rgba(0, 255, 136, ${alpha})`;
+        snakeCtx.fillRect(segment.x * 20 + 3, segment.y * 20 + 3, 14, 14);
+      }
+    });
+    
+    // Draw food
+    snakeCtx.fillStyle = '#ff4444';
+    snakeCtx.beginPath();
+    snakeCtx.arc(food.x * 20 + 10, food.y * 20 + 10, 8, 0, Math.PI * 2);
+    snakeCtx.fill();
+    
+    // Food highlight
+    snakeCtx.fillStyle = '#ff8888';
+    snakeCtx.beginPath();
+    snakeCtx.arc(food.x * 20 + 7, food.y * 20 + 7, 3, 0, Math.PI * 2);
+    snakeCtx.fill();
+  }
+
+  function handleSnakeKeyPress(e) {
+    if (!gameRunning && e.code === 'Space') {
+      e.preventDefault();
+      startSnakeGame();
+      return;
+    }
+    
+    if (gameRunning && e.code === 'Space') {
+      e.preventDefault();
+      pauseSnakeGame();
+      return;
+    }
+    
+    if (!gameRunning || gamePaused) return;
+    
+    switch(e.code) {
+      case 'ArrowUp':
+      case 'KeyW':
+        if (direction.y === 0) nextDirection = { x: 0, y: -1 };
+        break;
+      case 'ArrowDown':
+      case 'KeyS':
+        if (direction.y === 0) nextDirection = { x: 0, y: 1 };
+        break;
+      case 'ArrowLeft':
+      case 'KeyA':
+        if (direction.x === 0) nextDirection = { x: -1, y: 0 };
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        if (direction.x === 0) nextDirection = { x: 1, y: 0 };
+        break;
+    }
+  }
+
+  function updateSnakeDisplay() {
+    document.getElementById('snake-score').textContent = score;
+    document.getElementById('snake-length').textContent = snake.length;
+  }
+
+  function updateSnakeGameStatus(message) {
+    const statusEl = document.getElementById('snake-game-status');
+    if (statusEl) {
+      statusEl.textContent = message;
+    }
+  }
+
+  // Initialize Snake game if elements exist
+  if (document.getElementById('snakeCanvas')) {
+    initSnakeGame();
   }
 
 })();
