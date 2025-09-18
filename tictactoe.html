@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tic Tac Toe — Joshua's First AI Webpage</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="page">
+      <div class="top-bar">
+        <div class="top-bar-inner">
+          <div class="date-left" id="date">-- -- ----</div>
+          <div class="time-right" id="time-ny">--:--:--</div>
+        </div>
+      </div>
+
+      <div class="container" role="main" aria-labelledby="site-title">
+        <div class="top-row">
+          <div class="title" id="site-title">Tic Tac Toe</div>
+        </div>
+
+        <div class="content">
+          <div class="score-display">
+            <div class="score-item">
+              <span class="player-label">Player X:</span>
+              <span class="score-value" id="score-x">0</span>
+            </div>
+            <div class="score-item">
+              <span class="player-label">Player O:</span>
+              <span class="score-value" id="score-o">0</span>
+            </div>
+            <div class="score-item">
+              <span class="player-label">Ties:</span>
+              <span class="score-value" id="score-tie">0</span>
+            </div>
+          </div>
+
+          <div class="game-status" id="game-status">Player X's turn</div>
+
+          <div class="tic-tac-toe-board">
+            <button class="cell" data-index="0" aria-label="Cell 1"></button>
+            <button class="cell" data-index="1" aria-label="Cell 2"></button>
+            <button class="cell" data-index="2" aria-label="Cell 3"></button>
+            <button class="cell" data-index="3" aria-label="Cell 4"></button>
+            <button class="cell" data-index="4" aria-label="Cell 5"></button>
+            <button class="cell" data-index="5" aria-label="Cell 6"></button>
+            <button class="cell" data-index="6" aria-label="Cell 7"></button>
+            <button class="cell" data-index="7" aria-label="Cell 8"></button>
+            <button class="cell" data-index="8" aria-label="Cell 9"></button>
+            <button id="resetGameBtn" class="reset-button-center" title="Reset Game">RESET</button>
+          </div>
+
+          <div class="controls">
+            <button id="resetScoreBtn" class="btn-futuristic">Reset Score</button>
+            <a class="btn-futuristic" href="index.html">Home</a>
+            <a class="btn-futuristic" href="quote.html">Interactive Showcase</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
