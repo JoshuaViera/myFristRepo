@@ -89,8 +89,91 @@
               <button id="resetSnakeBtn" class="btn-futuristic">Reset</button>
             </div>
 
+            <div class="snake-speed-controls">
+              <h4>Game Speed:</h4>
+              <div class="speed-buttons">
+                <button class="speed-btn active" data-speed="200" id="slowSpeed">Slow</button>
+                <button class="speed-btn" data-speed="150" id="normalSpeed">Normal</button>
+                <button class="speed-btn" data-speed="100" id="fastSpeed">Fast</button>
+              </div>
+            </div>
+
             <div class="snake-instructions">
               <p><strong>Controls:</strong> Arrow Keys or WASD to move • SPACE to start/pause</p>
+            </div>
+          </div>
+
+          <!-- Ping Pong Game Section -->
+          <div class="game-divider">
+            <h3>Modern Ping Pong</h3>
+            <p>Play against AI with realistic physics and modern graphics. Use W/S or Arrow Keys to control your paddle!</p>
+          </div>
+
+          <div class="pingpong-game-container">
+            <div class="pingpong-score-display">
+              <div class="score-item">
+                <span class="player-label">Player:</span>
+                <span class="score-value" id="player-score">0</span>
+              </div>
+              <div class="score-item">
+                <span class="player-label">AI:</span>
+                <span class="score-value" id="ai-score">0</span>
+              </div>
+              <div class="score-item">
+                <span class="player-label">Speed:</span>
+                <span class="score-value" id="ball-speed">5</span>
+              </div>
+            </div>
+
+            <div class="pingpong-game-status" id="pingpong-game-status">Press SPACE to start</div>
+
+            <canvas id="pingpongCanvas" width="600" height="400"></canvas>
+
+            <div class="pingpong-controls">
+              <button id="startPingpongBtn" class="btn-futuristic">Start Game</button>
+              <button id="pausePingpongBtn" class="btn-futuristic">Pause</button>
+              <button id="resetPingpongBtn" class="btn-futuristic">Reset</button>
+            </div>
+
+            <div class="pingpong-instructions">
+              <p><strong>Controls:</strong> W/S or ↑/↓ to move paddle • SPACE to start/pause</p>
+            </div>
+          </div>
+
+          <!-- Galaga Game Section -->
+          <div class="game-divider">
+            <h3>Modern Galaga</h3>
+            <p>Defend Earth from alien invaders! Dodge enemy fire and destroy waves of alien ships.</p>
+          </div>
+
+          <div class="galaga-game-container">
+            <div class="galaga-score-display">
+              <div class="score-item">
+                <span class="player-label">Score:</span>
+                <span class="score-value" id="galaga-score">0</span>
+              </div>
+              <div class="score-item">
+                <span class="player-label">Lives:</span>
+                <span class="score-value" id="galaga-lives">3</span>
+              </div>
+              <div class="score-item">
+                <span class="player-label">Level:</span>
+                <span class="score-value" id="galaga-level">1</span>
+              </div>
+            </div>
+
+            <div class="galaga-game-status" id="galaga-game-status">Press SPACE to start defending Earth!</div>
+
+            <canvas id="galagaCanvas" width="600" height="500"></canvas>
+
+            <div class="galaga-controls">
+              <button id="startGalagaBtn" class="btn-futuristic">Start Game</button>
+              <button id="pauseGalagaBtn" class="btn-futuristic">Pause</button>
+              <button id="resetGalagaBtn" class="btn-futuristic">Reset</button>
+            </div>
+
+            <div class="galaga-instructions">
+              <p><strong>Controls:</strong> A/D or ←/→ to move • SPACE to shoot • Defeat all aliens to advance!</p>
             </div>
           </div>
         </div>

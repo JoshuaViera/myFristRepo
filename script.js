@@ -1,5 +1,5 @@
 // Consolidated JavaScript for time/date, theme toggle, and quote functionality
-(function(){
+document.addEventListener('DOMContentLoaded', function() {
   // ===== TIME/DATE FUNCTIONALITY =====
   const dateEl = document.getElementById('date');
   const nyTimeEl = document.getElementById('time-ny');
@@ -100,11 +100,20 @@
   if (dateEl && nyTimeEl) {
     updateDateAndTime();
     setInterval(updateDateAndTime, 1000);
+    console.log('Time/date functionality initialized');
+  } else {
+    console.log('Time/date elements not found:', { dateEl, nyTimeEl });
   }
 
   // Initialize quote functionality if elements exist
   if (quoteEl && authorEl) {
     setQuote(getRandomQuoteIndex());
+    console.log('Quote functionality initialized');
+  }
+
+  // Initialize theme toggle if element exists
+  if (themeBtn) {
+    console.log('Theme toggle initialized');
   }
 
   // ===== TIC TAC TOE FUNCTIONALITY =====
@@ -119,7 +128,7 @@
   let currentPlayer = 'X';
   let gameBoard = ['', '', '', '', '', '', '', '', ''];
   let gameActive = true;
-  let scores = {
+  let ticTacToeScores = {
     X: 0,
     O: 0,
     tie: 0
@@ -138,9 +147,9 @@
   ];
 
   function updateScore() {
-    if (scoreXEl) scoreXEl.textContent = scores.X;
-    if (scoreOEl) scoreOEl.textContent = scores.O;
-    if (scoreTieEl) scoreTieEl.textContent = scores.tie;
+    if (scoreXEl) scoreXEl.textContent = ticTacToeScores.X;
+    if (scoreOEl) scoreOEl.textContent = ticTacToeScores.O;
+    if (scoreTieEl) scoreTieEl.textContent = ticTacToeScores.tie;
   }
 
   function updateGameStatus(message) {
@@ -196,10 +205,10 @@
       gameActive = false;
       if (winner === 'tie') {
         updateGameStatus("It's a tie!");
-        scores.tie++;
+        ticTacToeScores.tie++;
       } else {
         updateGameStatus(`Player ${winner} wins!`);
-        scores[winner]++;
+        ticTacToeScores[winner]++;
       }
       updateScore();
       showResetButton();
@@ -226,7 +235,7 @@
   }
 
   function resetScore() {
-    scores = { X: 0, O: 0, tie: 0 };
+    ticTacToeScores = { X: 0, O: 0, tie: 0 };
     updateScore();
     resetGame();
   }
@@ -251,6 +260,7 @@
     updateScore();
     updateGameStatus("Player X's turn");
     hideResetButton(); // Ensure reset button is hidden at start
+    console.log('Tic Tac Toe initialized');
   }
 
   // ===== INTERACTIVE SHOWCASE FUNCTIONALITY =====
@@ -796,8 +806,9 @@
   let gamePaused = false;
   let score = 0;
   let highScore = localStorage.getItem('snakeHighScore') || 0;
-  let gameSpeed = 150;
+  let gameSpeed = 200; // Default to slow speed
   let gameLoop;
+  let currentSpeed = 'slow';
 
   function initSnakeGame() {
     snakeCanvas = document.getElementById('snakeCanvas');
@@ -812,6 +823,11 @@
     document.getElementById('startSnakeBtn')?.addEventListener('click', startSnakeGame);
     document.getElementById('pauseSnakeBtn')?.addEventListener('click', pauseSnakeGame);
     document.getElementById('resetSnakeBtn')?.addEventListener('click', resetSnakeGame);
+    
+    // Speed control event listeners
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.addEventListener('click', changeGameSpeed);
+    });
     
     // Keyboard controls
     document.addEventListener('keydown', handleSnakeKeyPress);
@@ -853,6 +869,31 @@
     updateSnakeGameStatus('Game Running');
     
     if (!gameLoop) {
+      gameLoop = setInterval(gameUpdate, gameSpeed);
+    }
+  }
+
+  function changeGameSpeed(event) {
+    const button = event.target;
+    const speed = parseInt(button.dataset.speed);
+    
+    // Update active button
+    document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+    
+    // Update game speed
+    gameSpeed = speed;
+    
+    // Update current speed for reference
+    if (speed === 200) currentSpeed = 'slow';
+    else if (speed === 150) currentSpeed = 'normal';
+    else if (speed === 100) currentSpeed = 'fast';
+    
+    // If game is running, restart with new speed
+    if (gameRunning && !gamePaused) {
+      if (gameLoop) {
+        clearInterval(gameLoop);
+      }
       gameLoop = setInterval(gameUpdate, gameSpeed);
     }
   }
@@ -1015,18 +1056,22 @@
       case 'ArrowUp':
       case 'KeyW':
         if (direction.y === 0) nextDirection = { x: 0, y: -1 };
+        e.preventDefault();
         break;
       case 'ArrowDown':
       case 'KeyS':
         if (direction.y === 0) nextDirection = { x: 0, y: 1 };
+        e.preventDefault();
         break;
       case 'ArrowLeft':
       case 'KeyA':
         if (direction.x === 0) nextDirection = { x: -1, y: 0 };
+        e.preventDefault();
         break;
       case 'ArrowRight':
       case 'KeyD':
         if (direction.x === 0) nextDirection = { x: 1, y: 0 };
+        e.preventDefault();
         break;
     }
   }
@@ -1046,6 +1091,656 @@
   // Initialize Snake game if elements exist
   if (document.getElementById('snakeCanvas')) {
     initSnakeGame();
+    console.log('Snake game initialized');
   }
 
-})();
+  // ===== PING PONG GAME FUNCTIONALITY =====
+  let pingpongCanvas, pingpongCtx;
+  let pingpongGameRunning = false;
+  let pingpongGamePaused = false;
+  let pingpongGameLoop;
+
+  // Game objects
+  let ball = {
+    x: 300,
+    y: 200,
+    dx: 5,
+    dy: 3,
+    radius: 8,
+    speed: 5
+  };
+
+  let playerPaddle = {
+    x: 50,
+    y: 150,
+    width: 15,
+    height: 80,
+    speed: 6
+  };
+
+  let aiPaddle = {
+    x: 535,
+    y: 150,
+    width: 15,
+    height: 80,
+    speed: 4
+  };
+
+  let pingPongScores = {
+    player: 0,
+    ai: 0
+  };
+
+  function initPingPongGame() {
+    pingpongCanvas = document.getElementById('pingpongCanvas');
+    if (!pingpongCanvas) return;
+    
+    pingpongCtx = pingpongCanvas.getContext('2d');
+    
+    // Event listeners
+    document.getElementById('startPingpongBtn')?.addEventListener('click', startPingPongGame);
+    document.getElementById('pausePingpongBtn')?.addEventListener('click', pausePingPongGame);
+    document.getElementById('resetPingpongBtn')?.addEventListener('click', resetPingPongGame);
+    
+    // Keyboard controls
+    document.addEventListener('keydown', handlePingPongKeyPress);
+    
+    // Initial draw
+    drawPingPongGame();
+  }
+
+  function startPingPongGame() {
+    if (!pingpongGameRunning && !pingpongGamePaused) {
+      // Reset ball position
+      ball.x = pingpongCanvas.width / 2;
+      ball.y = pingpongCanvas.height / 2;
+      ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+      ball.dy = (Math.random() - 0.5) * 4;
+    }
+    
+    pingpongGameRunning = true;
+    pingpongGamePaused = false;
+    updatePingPongGameStatus('Game Running');
+    
+    if (!pingpongGameLoop) {
+      pingpongGameLoop = setInterval(updatePingPongGame, 16); // ~60fps
+    }
+  }
+
+  function pausePingPongGame() {
+    if (pingpongGameRunning) {
+      pingpongGamePaused = !pingpongGamePaused;
+      updatePingPongGameStatus(pingpongGamePaused ? 'Game Paused' : 'Game Running');
+      
+      if (pingpongGamePaused) {
+        clearInterval(pingpongGameLoop);
+        pingpongGameLoop = null;
+      } else {
+        pingpongGameLoop = setInterval(updatePingPongGame, 16);
+      }
+    }
+  }
+
+  function resetPingPongGame() {
+    pingPongScores.player = 0;
+    pingPongScores.ai = 0;
+    pingpongGameRunning = false;
+    pingpongGamePaused = false;
+    
+    if (pingpongGameLoop) {
+      clearInterval(pingpongGameLoop);
+      pingpongGameLoop = null;
+    }
+    
+    // Reset positions
+    ball.x = pingpongCanvas.width / 2;
+    ball.y = pingpongCanvas.height / 2;
+    ball.dx = 0;
+    ball.dy = 0;
+    
+    playerPaddle.y = (pingpongCanvas.height - playerPaddle.height) / 2;
+    aiPaddle.y = (pingpongCanvas.height - aiPaddle.height) / 2;
+    
+    updatePingPongDisplay();
+    updatePingPongGameStatus('Press SPACE or click Start to begin');
+    drawPingPongGame();
+  }
+
+  function updatePingPongGame() {
+    if (!pingpongGameRunning || pingpongGamePaused) return;
+    
+    // Move ball
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+    
+    // Ball collision with top/bottom walls
+    if (ball.y <= ball.radius || ball.y >= pingpongCanvas.height - ball.radius) {
+      ball.dy = -ball.dy;
+    }
+    
+    // Ball collision with paddles
+    if (ball.x <= playerPaddle.x + playerPaddle.width &&
+        ball.x >= playerPaddle.x &&
+        ball.y >= playerPaddle.y &&
+        ball.y <= playerPaddle.y + playerPaddle.height) {
+      ball.dx = Math.abs(ball.dx);
+      ball.dy += (ball.y - (playerPaddle.y + playerPaddle.height / 2)) * 0.1;
+      ball.speed = Math.min(ball.speed + 0.5, 10);
+      ball.dx = ball.speed;
+      ball.dy = ball.dy * 1.1;
+    }
+    
+    if (ball.x >= aiPaddle.x - ball.radius &&
+        ball.x <= aiPaddle.x + aiPaddle.width &&
+        ball.y >= aiPaddle.y &&
+        ball.y <= aiPaddle.y + aiPaddle.height) {
+      ball.dx = -Math.abs(ball.dx);
+      ball.dy += (ball.y - (aiPaddle.y + aiPaddle.height / 2)) * 0.1;
+      ball.speed = Math.min(ball.speed + 0.5, 10);
+      ball.dx = -ball.speed;
+      ball.dy = ball.dy * 1.1;
+    }
+    
+    // Scoring
+    if (ball.x < 0) {
+      pingPongScores.ai++;
+      resetBall();
+    } else if (ball.x > pingpongCanvas.width) {
+      pingPongScores.player++;
+      resetBall();
+    }
+    
+    // AI paddle movement
+    const aiCenter = aiPaddle.y + aiPaddle.height / 2;
+    if (aiCenter < ball.y - 10) {
+      aiPaddle.y += aiPaddle.speed;
+    } else if (aiCenter > ball.y + 10) {
+      aiPaddle.y -= aiPaddle.speed;
+    }
+    
+    // Keep AI paddle in bounds
+    aiPaddle.y = Math.max(0, Math.min(pingpongCanvas.height - aiPaddle.height, aiPaddle.y));
+    
+    updatePingPongDisplay();
+    drawPingPongGame();
+  }
+
+  function resetBall() {
+    ball.x = pingpongCanvas.width / 2;
+    ball.y = pingpongCanvas.height / 2;
+    ball.speed = 5;
+    ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+    ball.dy = (Math.random() - 0.5) * 4;
+  }
+
+  function drawPingPongGame() {
+    if (!pingpongCtx) return;
+    
+    // Clear canvas
+    pingpongCtx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    pingpongCtx.fillRect(0, 0, pingpongCanvas.width, pingpongCanvas.height);
+    
+    // Draw center line
+    pingpongCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    pingpongCtx.lineWidth = 2;
+    pingpongCtx.setLineDash([10, 10]);
+    pingpongCtx.beginPath();
+    pingpongCtx.moveTo(pingpongCanvas.width / 2, 0);
+    pingpongCtx.lineTo(pingpongCanvas.width / 2, pingpongCanvas.height);
+    pingpongCtx.stroke();
+    pingpongCtx.setLineDash([]);
+    
+    // Draw player paddle
+    pingpongCtx.fillStyle = '#00d4ff';
+    pingpongCtx.fillRect(playerPaddle.x, playerPaddle.y, playerPaddle.width, playerPaddle.height);
+    
+    // Draw AI paddle
+    pingpongCtx.fillStyle = '#ff00ff';
+    pingpongCtx.fillRect(aiPaddle.x, aiPaddle.y, aiPaddle.width, aiPaddle.height);
+    
+    // Draw ball
+    pingpongCtx.fillStyle = '#00ff88';
+    pingpongCtx.beginPath();
+    pingpongCtx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    pingpongCtx.fill();
+    
+    // Ball trail effect
+    pingpongCtx.fillStyle = 'rgba(0, 255, 136, 0.3)';
+    pingpongCtx.beginPath();
+    pingpongCtx.arc(ball.x - ball.dx, ball.y - ball.dy, ball.radius * 0.7, 0, Math.PI * 2);
+    pingpongCtx.fill();
+  }
+
+  function handlePingPongKeyPress(e) {
+    if (!pingpongGameRunning && e.code === 'Space') {
+      e.preventDefault();
+      startPingPongGame();
+      return;
+    }
+    
+    if (pingpongGameRunning && e.code === 'Space') {
+      e.preventDefault();
+      pausePingPongGame();
+      return;
+    }
+    
+    if (!pingpongGameRunning || pingpongGamePaused) return;
+    
+    switch(e.code) {
+      case 'ArrowUp':
+      case 'KeyW':
+        playerPaddle.y = Math.max(0, playerPaddle.y - playerPaddle.speed);
+        e.preventDefault();
+        break;
+      case 'ArrowDown':
+      case 'KeyS':
+        playerPaddle.y = Math.min(pingpongCanvas.height - playerPaddle.height, playerPaddle.y + playerPaddle.speed);
+        e.preventDefault();
+        break;
+    }
+  }
+
+  function updatePingPongDisplay() {
+    document.getElementById('player-score').textContent = pingPongScores.player;
+    document.getElementById('ai-score').textContent = pingPongScores.ai;
+    document.getElementById('ball-speed').textContent = Math.round(ball.speed);
+  }
+
+  function updatePingPongGameStatus(message) {
+    const statusEl = document.getElementById('pingpong-game-status');
+    if (statusEl) {
+      statusEl.textContent = message;
+    }
+  }
+
+  // Initialize Ping Pong game if elements exist
+  if (document.getElementById('pingpongCanvas')) {
+    initPingPongGame();
+    console.log('Ping Pong game initialized');
+  }
+
+  // ===== GALAGA GAME FUNCTIONALITY =====
+  let galagaCanvas, galagaCtx;
+  let galagaGameRunning = false;
+  let galagaGamePaused = false;
+  let galagaGameLoop;
+
+  // Game objects
+  let player = {
+    x: 300,
+    y: 450,
+    width: 40,
+    height: 20,
+    speed: 5
+  };
+
+  let bullets = [];
+  let enemies = [];
+  let enemyBullets = [];
+  let galagaParticles = [];
+
+  let gameState = {
+    score: 0,
+    lives: 3,
+    level: 1,
+    enemySpeed: 1,
+    enemyShootChance: 0.02
+  };
+
+  function initGalagaGame() {
+    galagaCanvas = document.getElementById('galagaCanvas');
+    if (!galagaCanvas) return;
+    
+    galagaCtx = galagaCanvas.getContext('2d');
+    
+    // Initialize player position
+    player.x = galagaCanvas.width / 2 - player.width / 2;
+    player.y = galagaCanvas.height - 50;
+    
+    // Event listeners
+    document.getElementById('startGalagaBtn')?.addEventListener('click', startGalagaGame);
+    document.getElementById('pauseGalagaBtn')?.addEventListener('click', pauseGalagaGame);
+    document.getElementById('resetGalagaBtn')?.addEventListener('click', resetGalagaGame);
+    
+    // Keyboard controls
+    document.addEventListener('keydown', handleGalagaKeyPress);
+    
+    createEnemyFormation();
+    updateGalagaDisplay();
+    updateGalagaGameStatus('Press SPACE or click Start to begin defending Earth!');
+    drawGalagaGame();
+  }
+
+  function startGalagaGame() {
+    galagaGameRunning = true;
+    galagaGamePaused = false;
+    updateGalagaGameStatus('Defend Earth!');
+    
+    if (!galagaGameLoop) {
+      galagaGameLoop = setInterval(updateGalagaGame, 16); // ~60fps
+    }
+  }
+
+  function pauseGalagaGame() {
+    if (galagaGameRunning) {
+      galagaGamePaused = !galagaGamePaused;
+      updateGalagaGameStatus(galagaGamePaused ? 'Game Paused' : 'Defend Earth!');
+      
+      if (galagaGamePaused) {
+        clearInterval(galagaGameLoop);
+        galagaGameLoop = null;
+      } else {
+        galagaGameLoop = setInterval(updateGalagaGame, 16);
+      }
+    }
+  }
+
+  function resetGalagaGame() {
+    galagaGameRunning = false;
+    galagaGamePaused = false;
+    
+    if (galagaGameLoop) {
+      clearInterval(galagaGameLoop);
+      galagaGameLoop = null;
+    }
+    
+    // Reset game state
+    gameState = {
+      score: 0,
+      lives: 3,
+      level: 1,
+      enemySpeed: 1,
+      enemyShootChance: 0.02
+    };
+    
+    // Reset arrays
+    bullets = [];
+    enemyBullets = [];
+    particles = [];
+    
+    // Reset player
+    player.x = galagaCanvas.width / 2 - player.width / 2;
+    player.y = galagaCanvas.height - 50;
+    
+    createEnemyFormation();
+    updateGalagaDisplay();
+    updateGalagaGameStatus('Press SPACE or click Start to begin defending Earth!');
+    drawGalagaGame();
+  }
+
+  function createEnemyFormation() {
+    enemies = [];
+    const rows = 4;
+    const cols = 10;
+    const startX = 50;
+    const startY = 50;
+    const spacing = 50;
+    
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        enemies.push({
+          x: startX + col * spacing,
+          y: startY + row * spacing,
+          width: 30,
+          height: 20,
+          alive: true,
+          type: row < 2 ? 'fighter' : 'bomber'
+        });
+      }
+    }
+  }
+
+  function updateGalagaGame() {
+    if (!galagaGameRunning || galagaGamePaused) return;
+    
+    // Move player bullets
+    bullets = bullets.filter(bullet => {
+      bullet.y -= 8;
+      return bullet.y > 0;
+    });
+    
+    // Move enemy bullets
+    enemyBullets = enemyBullets.filter(bullet => {
+      bullet.y += 4;
+      return bullet.y < galagaCanvas.height;
+    });
+    
+    // Move enemies
+    enemies.forEach(enemy => {
+      if (enemy.alive) {
+        enemy.x += gameState.enemySpeed;
+      }
+    });
+    
+    // Check if enemies hit wall
+    const rightmostEnemy = Math.max(...enemies.filter(e => e.alive).map(e => e.x + e.width));
+    const leftmostEnemy = Math.min(...enemies.filter(e => e.alive).map(e => e.x));
+    
+    if (rightmostEnemy >= galagaCanvas.width - 20 || leftmostEnemy <= 20) {
+      gameState.enemySpeed = -gameState.enemySpeed;
+      enemies.forEach(enemy => {
+        if (enemy.alive) {
+          enemy.y += 20;
+        }
+      });
+    }
+    
+    // Enemy shooting
+    enemies.forEach(enemy => {
+      if (enemy.alive && Math.random() < gameState.enemyShootChance) {
+        enemyBullets.push({
+          x: enemy.x + enemy.width / 2,
+          y: enemy.y + enemy.height,
+          width: 3,
+          height: 10
+        });
+      }
+    });
+    
+    // Collision detection - bullets vs enemies
+    for (let bulletIndex = bullets.length - 1; bulletIndex >= 0; bulletIndex--) {
+      const bullet = bullets[bulletIndex];
+      for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
+        const enemy = enemies[enemyIndex];
+        if (enemy.alive &&
+            bullet.x < enemy.x + enemy.width &&
+            bullet.x + bullet.width > enemy.x &&
+            bullet.y < enemy.y + enemy.height &&
+            bullet.y + bullet.height > enemy.y) {
+          
+          enemy.alive = false;
+          bullets.splice(bulletIndex, 1);
+          gameState.score += enemy.type === 'fighter' ? 100 : 150;
+          
+          // Create explosion particles
+          for (let i = 0; i < 8; i++) {
+            galagaParticles.push({
+              x: enemy.x + enemy.width / 2,
+              y: enemy.y + enemy.height / 2,
+              dx: (Math.random() - 0.5) * 6,
+              dy: (Math.random() - 0.5) * 6,
+              life: 30,
+              color: enemy.type === 'fighter' ? '#00ff88' : '#ff4444'
+            });
+          }
+          break; // Exit enemy loop after hit
+        }
+      }
+    }
+    
+    // Collision detection - enemy bullets vs player
+    for (let bulletIndex = enemyBullets.length - 1; bulletIndex >= 0; bulletIndex--) {
+      const bullet = enemyBullets[bulletIndex];
+      if (bullet.x < player.x + player.width &&
+          bullet.x + bullet.width > player.x &&
+          bullet.y < player.y + player.height &&
+          bullet.y + bullet.height > player.y) {
+        
+        enemyBullets.splice(bulletIndex, 1);
+        gameState.lives--;
+        
+        // Create explosion particles
+        for (let i = 0; i < 12; i++) {
+          galagaParticles.push({
+            x: player.x + player.width / 2,
+            y: player.y + player.height / 2,
+            dx: (Math.random() - 0.5) * 8,
+            dy: (Math.random() - 0.5) * 8,
+            life: 40,
+            color: '#ffaa00'
+          });
+        }
+        
+        if (gameState.lives <= 0) {
+          gameOver();
+          return;
+        }
+        break; // Exit after first hit
+      }
+    }
+    
+    // Update particles
+    galagaParticles = galagaParticles.filter(particle => {
+      particle.x += particle.dx;
+      particle.y += particle.dy;
+      particle.life--;
+      return particle.life > 0;
+    });
+    
+    // Check level completion
+    const aliveEnemies = enemies.filter(e => e.alive);
+    if (aliveEnemies.length === 0) {
+      gameState.level++;
+      gameState.enemySpeed += 0.5;
+      gameState.enemyShootChance += 0.005;
+      createEnemyFormation();
+    }
+    
+    updateGalagaDisplay();
+    drawGalagaGame();
+  }
+
+  function gameOver() {
+    galagaGameRunning = false;
+    galagaGamePaused = false;
+    
+    if (galagaGameLoop) {
+      clearInterval(galagaGameLoop);
+      galagaGameLoop = null;
+    }
+    
+    updateGalagaGameStatus(`Game Over! Final Score: ${gameState.score}`);
+  }
+
+  function drawGalagaGame() {
+    if (!galagaCtx) return;
+    
+    // Clear canvas with space background
+    galagaCtx.fillStyle = 'rgba(0, 0, 20, 0.9)';
+    galagaCtx.fillRect(0, 0, galagaCanvas.width, galagaCanvas.height);
+    
+    // Draw stars
+    for (let i = 0; i < 50; i++) {
+      galagaCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
+      galagaCtx.fillRect(i * 12, (i * 7) % galagaCanvas.height, 1, 1);
+    }
+    
+    // Draw player ship
+    galagaCtx.fillStyle = '#00d4ff';
+    galagaCtx.fillRect(player.x, player.y, player.width, player.height);
+    
+    // Draw player ship details
+    galagaCtx.fillStyle = '#ffffff';
+    galagaCtx.fillRect(player.x + 5, player.y - 5, 30, 5);
+    
+    // Draw bullets
+    galagaCtx.fillStyle = '#00ff88';
+    bullets.forEach(bullet => {
+      galagaCtx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+    });
+    
+    // Draw enemy bullets
+    galagaCtx.fillStyle = '#ff4444';
+    enemyBullets.forEach(bullet => {
+      galagaCtx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+    });
+    
+    // Draw enemies
+    enemies.forEach(enemy => {
+      if (enemy.alive) {
+        galagaCtx.fillStyle = enemy.type === 'fighter' ? '#ff00ff' : '#ffaa00';
+        galagaCtx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        
+        // Enemy details
+        galagaCtx.fillStyle = '#ffffff';
+        galagaCtx.fillRect(enemy.x + 5, enemy.y + 2, 20, 2);
+        galagaCtx.fillRect(enemy.x + 10, enemy.y + 8, 10, 2);
+      }
+    });
+    
+    // Draw particles
+    galagaParticles.forEach(particle => {
+      galagaCtx.fillStyle = particle.color;
+      galagaCtx.fillRect(particle.x, particle.y, 2, 2);
+    });
+  }
+
+  function handleGalagaKeyPress(e) {
+    if (!galagaGameRunning && e.code === 'Space') {
+      e.preventDefault();
+      startGalagaGame();
+      return;
+    }
+    
+    if (galagaGameRunning && e.code === 'Space') {
+      e.preventDefault();
+      pauseGalagaGame();
+      return;
+    }
+    
+    if (!galagaGameRunning || galagaGamePaused) return;
+    
+    switch(e.code) {
+      case 'ArrowLeft':
+      case 'KeyA':
+        player.x = Math.max(0, player.x - player.speed);
+        e.preventDefault();
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        player.x = Math.min(galagaCanvas.width - player.width, player.x + player.speed);
+        e.preventDefault();
+        break;
+      case 'Space':
+        e.preventDefault();
+        // Shoot bullet
+        bullets.push({
+          x: player.x + player.width / 2 - 1,
+          y: player.y,
+          width: 3,
+          height: 10
+        });
+        break;
+    }
+  }
+
+  function updateGalagaDisplay() {
+    document.getElementById('galaga-score').textContent = gameState.score;
+    document.getElementById('galaga-lives').textContent = gameState.lives;
+    document.getElementById('galaga-level').textContent = gameState.level;
+  }
+
+  function updateGalagaGameStatus(message) {
+    const statusEl = document.getElementById('galaga-game-status');
+    if (statusEl) {
+      statusEl.textContent = message;
+    }
+  }
+
+  // Initialize Galaga game if elements exist
+  if (document.getElementById('galagaCanvas')) {
+    initGalagaGame();
+    console.log('Galaga game initialized');
+  }
+
+});
