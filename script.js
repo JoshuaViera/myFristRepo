@@ -1258,8 +1258,9 @@ document.addEventListener('DOMContentLoaded', function() {
     x: 50,
     y: 150,
     width: 15,
-    height: 80,
-    speed: 6
+  height: 80,
+  // increase player 2 paddle base speed for more responsive control
+  speed: 12
   };
 
   let aiPaddle = {
@@ -1267,8 +1268,30 @@ document.addEventListener('DOMContentLoaded', function() {
     y: 150,
     width: 15,
     height: 80,
-    speed: 4
+    // AI paddle base speed (will be used as max per-frame step)
+    speed: 7
   };
+
+  // AI tuning: reaction timing (ms) and temporary speed boost when ball is close
+  let aiReactionTime = 80; // lower = more reactive (in ms)
+  let aiLastReact = 0;
+  let aiTargetY = aiPaddle.y + aiPaddle.height / 2;
+  
+  // Predict the Y position of the ball when it reaches a given x (accounts for vertical bounces)
+  function predictBallYAtX(targetX) {
+    if (!pingpongCanvas) return ball.y;
+    if (ball.dx === 0) return ball.y;
+    const h = pingpongCanvas.height;
+    const time = (targetX - ball.x) / ball.dx;
+    if (time <= 0) return ball.y;
+    let predY = ball.y + ball.dy * time;
+    // reflect within [0, h]
+    // handle multiple bounces via modulo arithmetic
+    const period = 2 * h;
+    predY = ((predY % period) + period) % period; // positive modulo
+    if (predY > h) predY = period - predY;
+    return predY;
+  }
 
   let pingPongScores = {
     player: 0,
@@ -1289,8 +1312,43 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('pausePingpongBtn')?.addEventListener('click', pausePingPongGame);
     document.getElementById('resetPingpongBtn')?.addEventListener('click', resetPingPongGame);
     
-    // Keyboard controls
-    document.addEventListener('keydown', handlePingPongKeyPress);
+  // Keyboard controls (continuous via flags)
+  document.addEventListener('keydown', (e) => { handlePingPongKeyPress(e, true); });
+  document.addEventListener('keyup', (e) => { handlePingPongKeyPress(e, false); });
+
+    // Difficulty presets (Easy/Medium/Hard)
+    const difficultySelect = document.getElementById('ping-difficulty');
+    const difficultyPresets = {
+      Easy: { aiReactionTime: 220, aiSpeed: 4 },
+      Medium: { aiReactionTime: 80, aiSpeed: 7 },
+      Hard: { aiReactionTime: 40, aiSpeed: 10 }
+    };
+
+    function applyDifficulty(name) {
+      const p = difficultyPresets[name] || difficultyPresets.Medium;
+      aiReactionTime = p.aiReactionTime;
+      aiPaddle.speed = p.aiSpeed;
+    }
+
+    // default difficulty
+    // load persisted difficulty if present
+    const stored = localStorage.getItem('pingDifficulty');
+    const initial = stored || 'Medium';
+    applyDifficulty(initial);
+    if (difficultySelect) {
+      difficultySelect.value = initial;
+      difficultySelect.addEventListener('change', (e) => {
+        const v = e.target.value;
+        applyDifficulty(v);
+        localStorage.setItem('pingDifficulty', v);
+        // update on-screen indicator if present
+        const di = document.getElementById('difficulty-indicator');
+        if (di) di.textContent = v;
+      });
+      // set on-screen indicator initially
+      const di = document.getElementById('difficulty-indicator');
+      if (di) di.textContent = initial;
+    }
 
     // Drag-only mouse control & touch control: enabled automatically on touch-capable devices.
     let dragging = false;
@@ -1408,6 +1466,10 @@ document.addEventListener('DOMContentLoaded', function() {
     drawPingPongGame();
   }
 
+  // player input flags
+  let playerMoveUp = false;
+  let playerMoveDown = false;
+
   function updatePingPongGame() {
     if (!pingpongGameRunning || pingpongGamePaused) return;
     
@@ -1452,13 +1514,30 @@ document.addEventListener('DOMContentLoaded', function() {
       resetBall();
     }
     
-    // AI paddle movement
-    const aiCenter = aiPaddle.y + aiPaddle.height / 2;
-    if (aiCenter < ball.y - 10) {
-      aiPaddle.y += aiPaddle.speed;
-    } else if (aiCenter > ball.y + 10) {
-      aiPaddle.y -= aiPaddle.speed;
+    // Apply player movement from key flags (only when touch control is not active)
+    if (!touchControlEnabled) {
+      if (playerMoveUp) {
+        playerPaddle.y = Math.max(0, playerPaddle.y - playerPaddle.speed);
+      }
+      if (playerMoveDown) {
+        playerPaddle.y = Math.min(pingpongCanvas.height - playerPaddle.height, playerPaddle.y + playerPaddle.speed);
+      }
     }
+
+    // AI paddle movement: predictive with reaction time
+    const now = Date.now();
+    if (now - aiLastReact > aiReactionTime) {
+      aiLastReact = now;
+      // predict where the ball will be when it reaches the AI's x
+      const targetX = aiPaddle.x; // AI tries to intercept at its paddle x
+      aiTargetY = predictBallYAtX(targetX);
+    }
+
+    const aiCenter = aiPaddle.y + aiPaddle.height / 2;
+    const delta = aiTargetY - aiCenter;
+    // move by up to aiPaddle.speed per update, scaled by ball speed for difficulty
+    const step = Math.sign(delta) * Math.min(Math.abs(delta), aiPaddle.speed + Math.min(3, Math.floor(ball.speed / 2)));
+    aiPaddle.y = Math.max(0, Math.min(pingpongCanvas.height - aiPaddle.height, aiPaddle.y + step));
     
     // Keep AI paddle in bounds
     aiPaddle.y = Math.max(0, Math.min(pingpongCanvas.height - aiPaddle.height, aiPaddle.y));
@@ -1513,39 +1592,39 @@ document.addEventListener('DOMContentLoaded', function() {
     pingpongCtx.fill();
   }
 
-  function handlePingPongKeyPress(e) {
-    if (!pingpongGameRunning && e.code === 'Space') {
+  function handlePingPongKeyPress(e, isDown) {
+    // Handle start/pause on keydown only
+    if (isDown && e.code === 'Space') {
       e.preventDefault();
-      startPingPongGame();
+      if (!pingpongGameRunning) startPingPongGame();
+      else if (pingpongGameRunning) pausePingPongGame();
       return;
     }
-    
-    if (pingpongGameRunning && e.code === 'Space') {
-      e.preventDefault();
-      pausePingPongGame();
-      return;
-    }
-    
+
+    // When game isn't running, don't process movement keys
     if (!pingpongGameRunning || pingpongGamePaused) return;
-    
-    switch(e.code) {
-      case 'ArrowUp':
-        // ArrowUp moves up faster
+
+    // Movement flags
+    if (e.code === 'ArrowUp') {
+      playerMoveUp = !!isDown;
+      // Speed boost on up key for responsiveness
+      if (isDown && !touchControlEnabled) {
         playerPaddle.y = Math.max(0, playerPaddle.y - Math.round(playerPaddle.speed * 1.8));
-        e.preventDefault();
-        break;
-      case 'KeyW':
-        // W moves up even slightly faster for responsiveness
+      }
+      e.preventDefault();
+    }
+
+    if (e.code === 'KeyW') {
+      playerMoveUp = !!isDown;
+      if (isDown && !touchControlEnabled) {
         playerPaddle.y = Math.max(0, playerPaddle.y - Math.round(playerPaddle.speed * 2));
-        e.preventDefault();
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        // If touch control is enabled, ignore keyboard down to prevent conflict
-        if (touchControlEnabled) break;
-        playerPaddle.y = Math.min(pingpongCanvas.height - playerPaddle.height, playerPaddle.y + playerPaddle.speed);
-        e.preventDefault();
-        break;
+      }
+      e.preventDefault();
+    }
+
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+      playerMoveDown = !!isDown;
+      e.preventDefault();
     }
   }
 
