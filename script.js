@@ -334,10 +334,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initialize tic tac toe if elements exist
   if (cells.length > 0) {
+    // Ensure X always starts
+    currentPlayer = 'X';
+    gameActive = true;
     updateScore();
     updateGameStatus("Player X's turn");
     hideResetButton(); // Ensure reset button is hidden at start
-    console.log('Tic Tac Toe initialized');
+    // Hide bot indicator if present
+    const thinkingEl = document.getElementById('bot-thinking');
+    if (thinkingEl) {
+      thinkingEl.classList.add('hidden');
+      thinkingEl.setAttribute('aria-hidden','true');
+    }
+    console.log('Tic Tac Toe initialized (X starts)');
   }
 
   // ===== INTERACTIVE SHOWCASE FUNCTIONALITY =====
