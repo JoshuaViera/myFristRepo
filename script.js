@@ -184,23 +184,27 @@ document.addEventListener('DOMContentLoaded', function() {
     return gameBoard.includes('') ? null : 'tie';
   }
 
-  function handleCellClick(event) {
-    const cell = event.target;
-    const index = parseInt(cell.dataset.index);
-
-    if (gameBoard[index] !== '' || !gameActive) {
-      return;
+  // Pure board-check helper (no DOM side-effects) for AI simulation
+  function checkWinnerSim(board) {
+    for (let condition of winningConditions) {
+      const [a, b, c] = condition;
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        return board[a];
+      }
     }
+    return board.includes('') ? null : 'tie';
+  }
 
-    // Update board
-    gameBoard[index] = currentPlayer;
-    cell.textContent = currentPlayer;
-    cell.classList.add(currentPlayer.toLowerCase());
+  // Apply a move for player at index (updates UI and game state)
+  function applyMove(index, player) {
+    if (!gameActive || gameBoard[index] !== '') return;
+    gameBoard[index] = player;
+    const cell = cells[index];
+    cell.textContent = player;
+    cell.classList.add(player.toLowerCase());
     cell.disabled = true;
 
-    // Check for winner
     const winner = checkWinner();
-    
     if (winner) {
       gameActive = false;
       if (winner === 'tie') {
@@ -212,10 +216,77 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       updateScore();
       showResetButton();
-    } else {
-      // Switch players
-      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-      updateGameStatus(`Player ${currentPlayer}'s turn`);
+      return;
+    }
+
+    // Switch turns
+    currentPlayer = player === 'X' ? 'O' : 'X';
+    updateGameStatus(`Player ${currentPlayer}'s turn`);
+  }
+
+  // ===== BOT (Player O) - intermediate skill =====
+  function findBestMove() {
+    // 1) Win if possible
+    for (let i = 0; i < 9; i++) {
+      if (gameBoard[i] === '') {
+        const copy = gameBoard.slice();
+        copy[i] = 'O';
+        if (checkWinnerSim(copy) === 'O') return i;
+      }
+    }
+    // 2) Block opponent win
+    for (let i = 0; i < 9; i++) {
+      if (gameBoard[i] === '') {
+        const copy = gameBoard.slice();
+        copy[i] = 'X';
+        if (checkWinnerSim(copy) === 'X') return i;
+      }
+    }
+    // 3) Take center
+    if (gameBoard[4] === '') return 4;
+    // 4) Take any corner
+    const corners = [0,2,6,8].filter(i => gameBoard[i] === '');
+    if (corners.length) return corners[Math.floor(Math.random()*corners.length)];
+    // 5) Take any side
+    const sides = [1,3,5,7].filter(i => gameBoard[i] === '');
+    if (sides.length) return sides[Math.floor(Math.random()*sides.length)];
+    return null;
+  }
+
+  function botMove() {
+    if (!gameActive) return;
+    const thinkingEl = document.getElementById('bot-thinking');
+    if (thinkingEl) {
+      thinkingEl.classList.remove('hidden');
+      thinkingEl.setAttribute('aria-hidden','false');
+    }
+    // small thinking delay
+    setTimeout(() => {
+      const idx = findBestMove();
+      if (idx !== null && gameBoard[idx] === '') {
+        applyMove(idx, 'O');
+      }
+      if (thinkingEl) {
+        thinkingEl.classList.add('hidden');
+        thinkingEl.setAttribute('aria-hidden','true');
+      }
+    }, 350);
+  }
+
+  function handleCellClick(event) {
+    const cell = event.target;
+    const index = parseInt(cell.dataset.index);
+
+    if (gameBoard[index] !== '' || !gameActive) return;
+
+    // Only allow human (X) clicks; O will be played by bot
+    if (currentPlayer !== 'X') return;
+
+    applyMove(index, currentPlayer);
+
+    // If bot's turn now, trigger bot
+    if (currentPlayer === 'O' && gameActive) {
+      botMove();
     }
   }
 
@@ -229,6 +300,12 @@ document.addEventListener('DOMContentLoaded', function() {
       cell.disabled = false;
       cell.classList.remove('x', 'o', 'winning');
     });
+    // hide bot indicator when resetting
+    const thinkingEl = document.getElementById('bot-thinking');
+    if (thinkingEl) {
+      thinkingEl.classList.add('hidden');
+      thinkingEl.setAttribute('aria-hidden','true');
+    }
     
     updateGameStatus("Player X's turn");
     hideResetButton();

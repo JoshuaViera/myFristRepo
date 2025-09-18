@@ -116,6 +116,28 @@ html,body{
   align-items:center;
 }
 
+.bot-thinking{
+  display:inline-flex;
+  align-items:center;
+  gap:0.5rem;
+  margin-top:0.75rem;
+  color:var(--text);
+  opacity:0.95;
+}
+
+.bot-thinking.hidden{ display:none; }
+
+.spinner{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,0.15);
+  border-top-color: rgba(255,255,255,0.75);
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin{ from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
 .intro{
   margin:0;
   color:var(--text);
