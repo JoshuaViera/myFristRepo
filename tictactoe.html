@@ -85,6 +85,7 @@
             </div>
 
             <div class="snake-game-status" id="snake-game-status">Press SPACE to start</div>
+            <div id="snake-touch-indicator" class="touch-indicator" aria-hidden="true">Touch Active</div>
 
             <canvas id="snakeCanvas" width="600" height="400"></canvas>
 
@@ -138,10 +139,8 @@
               <button id="startPingpongBtn" class="btn-futuristic">Start Game</button>
               <button id="pausePingpongBtn" class="btn-futuristic">Pause</button>
               <button id="resetPingpongBtn" class="btn-futuristic">Reset</button>
-              <label class="btn-futuristic" style="display:inline-flex;align-items:center;gap:0.6rem;cursor:pointer;">
-                <input type="checkbox" id="mouseControlToggle" style="width:16px;height:16px;appearance:none;-webkit-appearance:none;border:2px solid rgba(255,255,255,0.2);border-radius:4px;background:transparent;" />
-                <span style="font-weight:700;">Mouse Pad (drag)</span>
-              </label>
+              <!-- Touch indicator for Ping Pong (shown on touch devices) -->
+              <div id="ping-touch-indicator" class="touch-indicator" aria-hidden="true">Touch Active</div>
             </div>
 
             <div class="pingpong-instructions">

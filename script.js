@@ -969,6 +969,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update high score display
     document.getElementById('snake-high-score').textContent = highScore;
+
+    // Show snake touch indicator if touch device
+    if (('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)) {
+      const snakeBadge = document.getElementById('snake-touch-indicator');
+      if (snakeBadge) {
+        snakeBadge.style.display = 'inline-flex';
+        snakeBadge.setAttribute('aria-hidden', 'false');
+      }
+    }
     
     // Initial draw
     drawSnakeGame();
@@ -1266,6 +1275,9 @@ document.addEventListener('DOMContentLoaded', function() {
     ai: 0
   };
 
+  // whether touch controls are enabled (set on init based on device)
+  let touchControlEnabled = false;
+
   function initPingPongGame() {
     pingpongCanvas = document.getElementById('pingpongCanvas');
     if (!pingpongCanvas) return;
@@ -1280,9 +1292,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Keyboard controls
     document.addEventListener('keydown', handlePingPongKeyPress);
 
-    // Mouse control toggle (drag-only to avoid accidental movement)
-    const mouseToggle = document.getElementById('mouseControlToggle');
-    let mouseControlEnabled = false;
+    // Drag-only mouse control & touch control: enabled automatically on touch-capable devices.
     let dragging = false;
     let mouseMoveHandler = (e) => {
       if (!dragging) return;
@@ -1294,7 +1304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     let touchMoveHandler = (e) => {
-      if (!mouseControlEnabled) return;
+      if (!touchControlEnabled) return;
       const rect = pingpongCanvas.getBoundingClientRect();
       const touch = e.touches[0];
       if (!touch) return;
@@ -1305,26 +1315,24 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
     };
 
-    if (mouseToggle) {
-      mouseToggle.addEventListener('change', (ev) => {
-        mouseControlEnabled = ev.target.checked;
-        if (!mouseControlEnabled) {
-          // ensure dragging state cleared
-          dragging = false;
-          pingpongCanvas.removeEventListener('mousemove', mouseMoveHandler);
-          pingpongCanvas.removeEventListener('mouseup', onMouseUp);
-          pingpongCanvas.removeEventListener('mouseleave', onMouseUp);
-          pingpongCanvas.removeEventListener('touchmove', touchMoveHandler);
-        } else {
-          // attach listeners for drag and touch
-          pingpongCanvas.addEventListener('mousemove', mouseMoveHandler);
-          pingpongCanvas.addEventListener('touchmove', touchMoveHandler, { passive: false });
-        }
-      });
+    // Detect touch-capable device and enable touch controls by default
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    touchControlEnabled = !!isTouchDevice;
+
+    if (isTouchDevice) {
+      // show touch indicator badge
+      const pingBadge = document.getElementById('ping-touch-indicator');
+      if (pingBadge) {
+        pingBadge.style.display = 'inline-flex';
+        pingBadge.setAttribute('aria-hidden', 'false');
+      }
+      // attach touch handlers
+      pingpongCanvas.addEventListener('touchmove', touchMoveHandler, { passive: false });
+      pingpongCanvas.addEventListener('touchstart', (e) => { touchMoveHandler(e); }, { passive: false });
     }
 
     function onMouseDown(e) {
-      if (!mouseControlEnabled) return;
+      if (!touchControlEnabled && !isTouchDevice) return; // only allow drag when touch mode is active or on touch devices
       dragging = true;
       mouseMoveHandler(e);
     }
@@ -1333,15 +1341,10 @@ document.addEventListener('DOMContentLoaded', function() {
       dragging = false;
     }
 
-    // Attach drag start/end handlers to canvas
+    // Attach drag start/end handlers to canvas (safe because onMouseDown checks flag)
     pingpongCanvas.addEventListener('mousedown', onMouseDown);
     pingpongCanvas.addEventListener('mouseup', onMouseUp);
     pingpongCanvas.addEventListener('mouseleave', onMouseUp);
-    // Touch equivalents: touching the canvas enables direct control (if toggle on)
-    pingpongCanvas.addEventListener('touchstart', (e) => {
-      if (!mouseControlEnabled) return;
-      touchMoveHandler(e);
-    }, { passive: false });
 
     
     // Initial draw
@@ -1538,8 +1541,8 @@ document.addEventListener('DOMContentLoaded', function() {
         break;
       case 'ArrowDown':
       case 'KeyS':
-        // If mouse/drag control is enabled, ignore keyboard down to prevent conflict
-        if (document.getElementById('mouseControlToggle')?.checked) break;
+        // If touch control is enabled, ignore keyboard down to prevent conflict
+        if (touchControlEnabled) break;
         playerPaddle.y = Math.min(pingpongCanvas.height - playerPaddle.height, playerPaddle.y + playerPaddle.speed);
         e.preventDefault();
         break;

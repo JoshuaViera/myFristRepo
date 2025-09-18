@@ -772,6 +772,24 @@ canvas {
   color: var(--text);
 }
 
+/* Touch indicator badge */
+.touch-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.6rem;
+  background: linear-gradient(135deg,#00d4ff,#00ff88);
+  color: #02121a;
+  font-weight: 700;
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* By default hide indicators; JS will enable on touch-capable devices */
+#ping-touch-indicator, #snake-touch-indicator { display: none; }
+
 /* Snake Speed Controls */
 .snake-speed-controls {
   text-align: center;
