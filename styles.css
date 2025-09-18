@@ -83,13 +83,13 @@ html,body{
   height:44px;
   padding:0 1rem;
   border-radius:10px;
-  background:var(--button-bg);
-  border: 1px solid var(--button-border);
-  color:#111;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
   font-weight:700;
   letter-spacing:0.6px;
   cursor:pointer;
-  box-shadow: var(--futuristic-shadow);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
   transition: transform .12s ease, box-shadow .12s ease, background .18s ease, color .18s ease;
   text-decoration:none;
 }
@@ -120,12 +120,17 @@ html,body{
 
 /* (button style consolidated above) */
 
+.btn-futuristic:hover{
+  transform:translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
 .btn-futuristic:active{
-  transform:translateY(1px) scale(.997);
+  transform:translateY(0);
 }
 
 .btn-futuristic:focus{
-  outline:2px solid rgba(255,255,255,0.08);
+  outline:2px solid rgba(255,255,255,0.3);
   outline-offset:3px;
 }
 
@@ -622,20 +627,105 @@ canvas {
 
 .feature-card .btn-futuristic {
   width: 100%;
-  margin-top: auto;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
 }
 
 .theme-toggle-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 1rem;
   padding: 0.8rem 2rem;
+  width: auto;
 }
 
 .btn-icon {
   font-size: 1.2rem;
+}
+
+/* Snake Game Styles */
+.game-divider {
+  margin: 3rem 0 2rem 0;
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.game-divider h3 {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+  background: linear-gradient(45deg, #00ff88, #00d4ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.game-divider p {
+  opacity: 0.8;
+  margin: 0;
+}
+
+.snake-game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.snake-score-display {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.snake-game-status {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  min-width: 200px;
+}
+
+#snakeCanvas {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.snake-controls {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.snake-instructions {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 500px;
+}
+
+.snake-instructions p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+  color: var(--text);
 }
 
 /* AI Credit Styling */
@@ -721,5 +811,24 @@ canvas {
   .theme-toggle-btn {
     width: 100%;
     justify-content: center;
+  }
+  
+  .snake-score-display {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .snake-controls {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .snake-controls .btn-futuristic {
+    width: 200px;
+  }
+  
+  #snakeCanvas {
+    width: 300px;
+    height: 300px;
   }
 }
