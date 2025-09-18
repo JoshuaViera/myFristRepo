@@ -8,18 +8,42 @@
   </head>
   <body>
     <div class="page">
-      <div class="container" role="main" aria-labelledby="site-title">
-        <div class="top-row">
+      <div class="top-bar">
+        <div class="top-bar-inner">
           <div class="date-left" id="date">-- -- ----</div>
-          <div class="title" id="site-title">joshua's First Ai Webpage using GitHub</div>
           <div class="time-right" id="time-ny">--:--:--</div>
+        </div>
+      </div>
+
+      <div class="container showcase-container" role="main" aria-labelledby="site-title">
+        <div class="top-row">
+          <div class="title showcase-title" id="site-title">Joshua's AI-Powered Web Universe</div>
         </div>
 
         <div class="content">
-          <p class="intro">Welcome  this is a small demo page.</p>
+          <p class="intro showcase-intro">Welcome to an interactive digital experience crafted with cutting-edge AI development</p>
+          
+          <div class="feature-grid">
+            <div class="feature-card">
+              <div class="feature-icon">🎮</div>
+              <h3>Interactive Games</h3>
+              <p>Play classic tic-tac-toe with advanced scoring and animations</p>
+              <a class="btn-futuristic" href="tictactoe.html">Play Tic Tac Toe</a>
+            </div>
+            
+            <div class="feature-card">
+              <div class="feature-icon">🚀</div>
+              <h3>AI Showcase</h3>
+              <p>Experience particle physics, neural networks, and matrix effects</p>
+              <a class="btn-futuristic" href="quote.html">Explore Showcase</a>
+            </div>
+          </div>
+
           <div class="controls">
-            <button id="themeBtn" class="btn-futuristic" aria-pressed="false">Toggle Theme</button>
-            <a class="btn-futuristic" href="quote.html">Quotes</a>
+            <button id="themeBtn" class="btn-futuristic theme-toggle-btn" aria-pressed="false">
+              <span class="btn-icon">🎨</span>
+              Toggle Theme
+            </button>
           </div>
         </div>
       </div>
