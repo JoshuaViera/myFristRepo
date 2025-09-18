@@ -161,40 +161,48 @@
             </div>
           </div>
 
-          <!-- Galaga Game Section -->
+          <!-- Pac-Man Lite Game Section -->
           <div class="game-divider">
-            <h3>Modern Galaga</h3>
-            <p>Defend Earth from alien invaders! Dodge enemy fire and destroy waves of alien ships.</p>
+            <h3>Pac-Man Lite</h3>
+            <p>Collect pellets, avoid ghosts, and clear the maze!</p>
           </div>
 
-          <div class="galaga-game-container">
-            <div class="galaga-score-display">
+          <div class="pacman-game-container">
+            <div class="pacman-score-display">
               <div class="score-item">
                 <span class="player-label">Score:</span>
-                <span class="score-value" id="galaga-score">0</span>
+                <span class="score-value" id="pacman-score">0</span>
               </div>
               <div class="score-item">
                 <span class="player-label">Lives:</span>
-                <span class="score-value" id="galaga-lives">3</span>
-              </div>
-              <div class="score-item">
-                <span class="player-label">Level:</span>
-                <span class="score-value" id="galaga-level">1</span>
+                <span class="score-value" id="pacman-lives">3</span>
               </div>
             </div>
 
-            <div class="galaga-game-status" id="galaga-game-status">Press SPACE to start defending Earth!</div>
+            <div class="pacman-game-status" id="pacman-game-status">Press SPACE to start</div>
 
-            <canvas id="galagaCanvas" width="600" height="500"></canvas>
+            <canvas id="pacmanCanvas" width="600" height="400"></canvas>
 
-            <div class="galaga-controls">
-              <button id="startGalagaBtn" class="btn-futuristic">Start Game</button>
-              <button id="pauseGalagaBtn" class="btn-futuristic">Pause</button>
-              <button id="resetGalagaBtn" class="btn-futuristic">Reset</button>
+            <div class="pacman-controls">
+              <button id="startPacmanBtn" class="btn-futuristic">Start Game</button>
+              <button id="pausePacmanBtn" class="btn-futuristic">Pause</button>
+              <button id="resetPacmanBtn" class="btn-futuristic">Reset</button>
             </div>
 
-            <div class="galaga-instructions">
-              <p><strong>Controls:</strong> A/D or ←/→ to move • SPACE to shoot • Defeat all aliens to advance!</p>
+            <!-- On-screen D-pad for mobile controls -->
+            <div class="pacman-dpad" aria-hidden="false">
+              <div class="dpad-row">
+                <button class="dpad-btn" id="dpad-up" aria-label="Up">↑</button>
+              </div>
+              <div class="dpad-row">
+                <button class="dpad-btn" id="dpad-left" aria-label="Left">◀</button>
+                <button class="dpad-btn" id="dpad-down" aria-label="Down">↓</button>
+                <button class="dpad-btn" id="dpad-right" aria-label="Right">▶</button>
+              </div>
+            </div>
+
+            <div class="pacman-instructions">
+              <p><strong>Controls:</strong> Arrow Keys to move • SPACE to start/pause</p>
             </div>
           </div>
         </div>

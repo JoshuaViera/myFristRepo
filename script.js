@@ -886,6 +886,12 @@ document.addEventListener('DOMContentLoaded', function() {
   let snakeCanvas, snakeCtx;
   let snake = [];
   let food = {};
+  // Snake loss state
+  let snakeLost = false;
+  let snakeLoseReason = '';
+  // Confetti particles for loss animation
+  let confettiParticles = [];
+  let confettiActive = false;
   let direction = { x: 0, y: 0 };
   let nextDirection = { x: 0, y: 0 };
   let gameRunning = false;
@@ -979,6 +985,68 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
     
+    // Create a DOM overlay for loss message (accessible, styled)
+    let existingOverlay = document.getElementById('snake-lose-overlay');
+    if (!existingOverlay) {
+      const overlay = document.createElement('div');
+      overlay.id = 'snake-lose-overlay';
+      overlay.setAttribute('role','dialog');
+      overlay.setAttribute('aria-modal','true');
+      overlay.className = '';
+
+      const inner = document.createElement('div');
+      inner.className = 'panel';
+
+      const title = document.createElement('div');
+      title.id = 'snake-lose-title';
+      title.className = 'title';
+      title.textContent = 'You Lost!';
+
+      const reason = document.createElement('div');
+      reason.id = 'snake-lose-reason';
+      reason.className = 'reason';
+
+      const btn = document.createElement('button');
+      btn.id = 'snake-restart-btn';
+      btn.className = 'restart-btn';
+      btn.textContent = 'Restart';
+      btn.addEventListener('click', () => {
+        // hide overlay and restart
+        overlay.classList.remove('show');
+        confettiActive = false;
+        confettiParticles = [];
+        resetSnakeGame();
+        startSnakeGame();
+      });
+
+      inner.appendChild(title);
+      inner.appendChild(reason);
+      inner.appendChild(btn);
+      overlay.appendChild(inner);
+      // position overlay relative to canvas container
+      const container = snakeCanvas.parentElement || document.body;
+      container.style.position = container.style.position || 'relative';
+      container.appendChild(overlay);
+
+      // helper to position overlay over canvas
+      function positionOverlay() {
+        const rect = snakeCanvas.getBoundingClientRect();
+        const contRect = container.getBoundingClientRect();
+        overlay.style.left = (rect.left - contRect.left) + 'px';
+        overlay.style.top = (rect.top - contRect.top) + 'px';
+        overlay.style.width = rect.width + 'px';
+        overlay.style.height = rect.height + 'px';
+      }
+
+      // initial positioning
+      positionOverlay();
+
+      // reposition on window resize or page layout changes
+      window.addEventListener('resize', positionOverlay);
+      // store a pointer so we can call it if needed
+      overlay._positionOverlay = positionOverlay;
+    }
+    
     // Initial draw
     drawSnakeGame();
   }
@@ -988,6 +1056,15 @@ document.addEventListener('DOMContentLoaded', function() {
     direction = { x: 0, y: 0 };
     nextDirection = { x: 0, y: 0 };
     score = 0;
+  // clear lose state when resetting
+  snakeLost = false;
+  snakeLoseReason = '';
+  // hide DOM overlay if present
+  const overlay = document.getElementById('snake-lose-overlay');
+  if (overlay) overlay.style.display = 'none';
+  // stop confetti
+  confettiActive = false;
+  confettiParticles = [];
     gameRunning = false;
     gamePaused = false;
     
@@ -1060,16 +1137,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const gridSize = 20;
     const canvasWidth = snakeCanvas.width / gridSize;
     const canvasHeight = snakeCanvas.height / gridSize;
-    
+    // avoid spawning food on the starting cell {x:10,y:10} or on the snake body
+    let attempts = 0;
     do {
       food = {
         x: Math.floor(Math.random() * canvasWidth),
         y: Math.floor(Math.random() * canvasHeight)
       };
-    } while (snake.some(segment => segment.x === food.x && segment.y === food.y));
+      attempts++;
+      if (attempts > 200) break; // safety to avoid infinite loop
+    } while ((food.x === 10 && food.y === 10) || snake.some(segment => segment.x === food.x && segment.y === food.y));
   }
 
   function gameUpdate() {
+    // If player already lost, don't process further updates
+    if (snakeLost) {
+      // ensure overlay stays visible by drawing once more
+      drawSnakeGame();
+      return;
+    }
+
     if (!gameRunning || gamePaused) return;
     
     // Update direction
@@ -1081,13 +1168,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check wall collision
     if (head.x < 0 || head.x >= snakeCanvas.width / 20 || 
         head.y < 0 || head.y >= snakeCanvas.height / 20) {
-      gameOver();
+  // mark lose reason and call game over
+  snakeLost = true;
+  snakeLoseReason = 'Crashed into a wall';
+  gameOver();
       return;
     }
     
     // Check self collision
     if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
-      gameOver();
+  // head-to-body collision
+  snakeLost = true;
+  snakeLoseReason = 'Head to body collision';
+  gameOver();
       return;
     }
     
@@ -1119,9 +1212,72 @@ document.addEventListener('DOMContentLoaded', function() {
       localStorage.setItem('snakeHighScore', highScore);
       document.getElementById('snake-high-score').textContent = highScore;
     }
-    
-    updateSnakeGameStatus(`Game Over! Final Score: ${score}`);
+  // keep the lose reason set earlier (snakeLoseReason)
+  updateSnakeGameStatus(`You lost: ${snakeLoseReason} — Final Score: ${score}`);
+
+  // reset the board visually to original starting state but keep snakeLost true
+  snake = [{ x: 10, y: 10 }];
+  direction = { x: 0, y: 0 };
+  nextDirection = { x: 0, y: 0 };
+  // regenerate food away from the start
+  generateFood();
+  updateSnakeDisplay();
+
+  // draw once so overlay appears immediately
     drawSnakeGame();
+
+    // show DOM overlay if exists
+    const overlay = document.getElementById('snake-lose-overlay');
+    if (overlay) {
+      const title = document.getElementById('snake-lose-title');
+      const reasonEl = document.getElementById('snake-lose-reason');
+      if (title) title.textContent = 'You Lost!';
+      if (reasonEl) reasonEl.textContent = snakeLoseReason;
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      // allow clicks on the button
+      overlay.style.pointerEvents = 'auto';
+      const btn = document.getElementById('snake-restart-btn');
+      if (btn) btn.focus();
+    }
+
+    // trigger confetti
+    createConfetti();
+  }
+
+  // -- Confetti helpers --
+  function createConfetti() {
+    confettiParticles = [];
+    const colors = ['#ff4d4d','#ffd86b','#6bffb8','#6bd1ff','#c86bff'];
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      confettiParticles.push({
+        x: Math.random() * snakeCanvas.width,
+        y: Math.random() * (snakeCanvas.height * 0.3),
+        dx: (Math.random() - 0.5) * 2,
+        dy: Math.random() * 3 + 2,
+        size: Math.random() * 6 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI,
+        life: Math.random() * 60 + 60
+      });
+    }
+    confettiActive = true;
+  }
+
+  function updateConfetti() {
+    if (!confettiActive || !confettiParticles.length) return;
+    for (let i = confettiParticles.length - 1; i >= 0; i--) {
+      const p = confettiParticles[i];
+      p.x += p.dx;
+      p.y += p.dy;
+      p.rot += 0.1;
+      p.dy += 0.05; // gravity
+      p.life--;
+      if (p.life <= 0 || p.y > snakeCanvas.height + 20) confettiParticles.splice(i, 1);
+    }
+    if (confettiParticles.length === 0) confettiActive = false;
   }
 
   function drawSnakeGame() {
@@ -1179,9 +1335,62 @@ document.addEventListener('DOMContentLoaded', function() {
     snakeCtx.beginPath();
     snakeCtx.arc(food.x * 20 + 7, food.y * 20 + 7, 3, 0, Math.PI * 2);
     snakeCtx.fill();
+
+    // draw confetti on top if active
+    if (confettiActive && confettiParticles.length) {
+      confettiParticles.forEach(p => {
+        snakeCtx.save();
+        snakeCtx.translate(p.x, p.y);
+        snakeCtx.rotate(p.rot);
+        snakeCtx.fillStyle = p.color;
+        snakeCtx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 0.6);
+        snakeCtx.restore();
+      });
+      // update confetti for next frame
+      updateConfetti();
+    }
+
+    // If player has lost, draw a centered colorful overlay with reason
+    if (snakeLost) {
+      const cx = snakeCanvas.width / 2;
+      const cy = snakeCanvas.height / 2;
+      // translucent backdrop
+      snakeCtx.fillStyle = 'rgba(0,0,0,0.6)';
+      snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+      // colorful title
+      const gradient = snakeCtx.createLinearGradient(cx - 150, cy - 60, cx + 150, cy + 60);
+      gradient.addColorStop(0, '#ff4444');
+      gradient.addColorStop(0.5, '#ffdd44');
+      gradient.addColorStop(1, '#44ff88');
+
+      snakeCtx.font = 'bold 30px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      snakeCtx.textAlign = 'center';
+      snakeCtx.textBaseline = 'middle';
+      snakeCtx.fillStyle = gradient;
+      snakeCtx.fillText('You Lost!', cx, cy - 20);
+
+      // reason text
+      snakeCtx.font = '18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      snakeCtx.fillStyle = '#ffffff';
+      snakeCtx.fillText(snakeLoseReason, cx, cy + 10);
+
+      // subtext
+      snakeCtx.font = '14px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+      snakeCtx.fillStyle = 'rgba(255,255,255,0.9)';
+      snakeCtx.fillText('Press Reset or Space to play again', cx, cy + 40);
+    }
   }
 
   function handleSnakeKeyPress(e) {
+    // If player lost, Space should reset and start a new game
+    if (snakeLost && e.code === 'Space') {
+      e.preventDefault();
+      resetSnakeGame();
+      startSnakeGame();
+      return;
+    }
+
     if (!gameRunning && e.code === 'Space') {
       e.preventDefault();
       startSnakeGame();
@@ -1251,7 +1460,11 @@ document.addEventListener('DOMContentLoaded', function() {
     dx: 5,
     dy: 3,
     radius: 8,
-    speed: 5
+  speed: 5,
+  // extra properties for acceleration behavior
+  acceleration: 0,
+  // max speed cap to avoid runaway physics
+  maxSpeed: 12
   };
 
   let playerPaddle = {
@@ -1297,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', function() {
     player: 0,
     ai: 0
   };
+  let rallyCount = 0;
 
   // whether touch controls are enabled (set on init based on device)
   let touchControlEnabled = false;
@@ -1487,30 +1701,40 @@ document.addEventListener('DOMContentLoaded', function() {
         ball.x >= playerPaddle.x &&
         ball.y >= playerPaddle.y &&
         ball.y <= playerPaddle.y + playerPaddle.height) {
-      ball.dx = Math.abs(ball.dx);
-      ball.dy += (ball.y - (playerPaddle.y + playerPaddle.height / 2)) * 0.1;
-      ball.speed = Math.min(ball.speed + 0.5, 10);
-      ball.dx = ball.speed;
-      ball.dy = ball.dy * 1.1;
+  // reflect horizontally and add vertical deflection based on hit position
+  ball.dx = Math.abs(ball.dx);
+  ball.dy += (ball.y - (playerPaddle.y + playerPaddle.height / 2)) * 0.1;
+  // increase acceleration slightly on paddle hit
+  ball.acceleration = Math.min((ball.acceleration || 0) + 0.4, ball.maxSpeed - ball.speed);
+  // apply acceleration to speed, cap to ball.maxSpeed
+  ball.speed = Math.min(ball.speed + ball.acceleration, ball.maxSpeed);
+  // ensure dx sign reflects direction
+  ball.dx = Math.sign(ball.dx) * Math.abs(ball.speed);
+  // amplify vertical velocity slightly for more dynamic bounces
+  ball.dy = ball.dy * 1.1;
     }
     
     if (ball.x >= aiPaddle.x - ball.radius &&
         ball.x <= aiPaddle.x + aiPaddle.width &&
         ball.y >= aiPaddle.y &&
         ball.y <= aiPaddle.y + aiPaddle.height) {
-      ball.dx = -Math.abs(ball.dx);
-      ball.dy += (ball.y - (aiPaddle.y + aiPaddle.height / 2)) * 0.1;
-      ball.speed = Math.min(ball.speed + 0.5, 10);
-      ball.dx = -ball.speed;
-      ball.dy = ball.dy * 1.1;
+  ball.dx = -Math.abs(ball.dx);
+  ball.dy += (ball.y - (aiPaddle.y + aiPaddle.height / 2)) * 0.1;
+  // increase acceleration slightly on paddle hit
+  ball.acceleration = Math.min((ball.acceleration || 0) + 0.4, ball.maxSpeed - ball.speed);
+  ball.speed = Math.min(ball.speed + ball.acceleration, ball.maxSpeed);
+  ball.dx = -Math.abs(ball.speed);
+  ball.dy = ball.dy * 1.1;
     }
     
     // Scoring
     if (ball.x < 0) {
       pingPongScores.ai++;
+      rallyCount++;
       resetBall();
     } else if (ball.x > pingpongCanvas.width) {
       pingPongScores.player++;
+      rallyCount++;
       resetBall();
     }
     
@@ -1549,9 +1773,11 @@ document.addEventListener('DOMContentLoaded', function() {
   function resetBall() {
     ball.x = pingpongCanvas.width / 2;
     ball.y = pingpongCanvas.height / 2;
-    ball.speed = 5;
-    ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
-    ball.dy = (Math.random() - 0.5) * 4;
+  // reset speed and acceleration when a point is scored
+  ball.speed = 5;
+  ball.acceleration = 0;
+  ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+  ball.dy = (Math.random() - 0.5) * 4;
   }
 
   function drawPingPongGame() {
@@ -1631,7 +1857,10 @@ document.addEventListener('DOMContentLoaded', function() {
   function updatePingPongDisplay() {
     document.getElementById('player-score').textContent = pingPongScores.player;
     document.getElementById('ai-score').textContent = pingPongScores.ai;
-    document.getElementById('ball-speed').textContent = Math.round(ball.speed);
+  const rc = document.getElementById('rally-count');
+  if (rc) rc.textContent = rallyCount;
+  const di = document.getElementById('difficulty-indicator');
+  if (di) di.textContent = (localStorage.getItem('pingDifficulty') || 'Medium');
   }
 
   function updatePingPongGameStatus(message) {
@@ -1647,388 +1876,497 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Ping Pong game initialized');
   }
 
-  // ===== GALAGA GAME FUNCTIONALITY =====
-  let galagaCanvas, galagaCtx;
-  let galagaGameRunning = false;
-  let galagaGamePaused = false;
-  let galagaGameLoop;
+  // ===== PAC-MAN LITE GAME FUNCTIONALITY =====
+  let pacmanCanvas, pacmanCtx;
+  let pacmanRunning = false;
+  let pacmanPaused = false;
+  let pacmanLoop = null;
 
-  // Game objects
-  let player = {
-    x: 300,
-    y: 450,
-    width: 40,
-    height: 20,
-    speed: 5
+  const tileSize = 18; // grid tile size (tuned for layout)
+  const cols = 28; // playfield columns
+  const rows = 20; // playfield rows
+
+  // Simple maze: 0 = empty/pellet, 1 = wall, 2 = power-pellet
+  // We'll generate a small bordered maze with some inner walls for demo
+  let maze = [];
+  let pellets = [];
+
+  const pac = {
+    x: 1,
+    y: 1,
+    dir: { x: 0, y: 0 },
+    nextDir: { x: 0, y: 0 },
+    speed: 1
   };
 
-  let bullets = [];
-  let enemies = [];
-  let enemyBullets = [];
-  let galagaParticles = [];
+  // multiple ghosts (will chase Pac-Man)
+  let ghosts = [
+    { x: cols - 2, y: rows - 2, color: '#ff6b6b' },
+    { x: cols - 3, y: rows - 2, color: '#6bd1ff' },
+    { x: cols - 2, y: rows - 3, color: '#c86bff' }
+  ];
 
-  let gameState = {
+  // Gameplay tuning
+  let pacTickMs = 120; // ms per pacman update
+  let ghostBaseInterval = 260; // base ms per ghost step
+
+  let pacmanState = {
     score: 0,
-    lives: 3,
-    level: 1,
-    enemySpeed: 1,
-    enemyShootChance: 0.02
+    lives: 3
   };
 
-  function initGalagaGame() {
-    galagaCanvas = document.getElementById('galagaCanvas');
-    if (!galagaCanvas) return;
-    
-    galagaCtx = galagaCanvas.getContext('2d');
-    
-    // Initialize player position
-    player.x = galagaCanvas.width / 2 - player.width / 2;
-    player.y = galagaCanvas.height - 50;
-    
-    // Event listeners
-    document.getElementById('startGalagaBtn')?.addEventListener('click', startGalagaGame);
-    document.getElementById('pauseGalagaBtn')?.addEventListener('click', pauseGalagaGame);
-    document.getElementById('resetGalagaBtn')?.addEventListener('click', resetGalagaGame);
-    
-    // Keyboard controls
-    document.addEventListener('keydown', handleGalagaKeyPress);
-    
-    createEnemyFormation();
-    updateGalagaDisplay();
-    updateGalagaGameStatus('Press SPACE or click Start to begin defending Earth!');
-    drawGalagaGame();
-  }
-
-  function startGalagaGame() {
-    galagaGameRunning = true;
-    galagaGamePaused = false;
-    updateGalagaGameStatus('Defend Earth!');
-    
-    if (!galagaGameLoop) {
-      galagaGameLoop = setInterval(updateGalagaGame, 16); // ~60fps
+  function buildMaze() {
+    maze = Array(rows).fill().map(() => Array(cols).fill(0));
+    // border walls
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (r === 0 || r === rows -1 || c === 0 || c === cols -1) maze[r][c] = 1;
+      }
+    }
+    // add some interior walls for a simple maze pattern
+    for (let r = 2; r < rows -2; r+=4) {
+      for (let c = 2; c < cols -2; c++) {
+        if (c % 6 !== 0) maze[r][c] = 1;
+      }
+    }
+    // place pellets wherever there's no wall
+    pellets = [];
+    for (let r = 1; r < rows -1; r++) {
+      for (let c = 1; c < cols -1; c++) {
+        if (maze[r][c] === 0) pellets.push({ x: c, y: r, power: false });
+      }
+    }
+    // scatter a few power pellets
+    for (let i = 0; i < 4; i++) {
+      const idx = Math.floor(Math.random() * pellets.length);
+      pellets[idx].power = true;
     }
   }
 
-  function pauseGalagaGame() {
-    if (galagaGameRunning) {
-      galagaGamePaused = !galagaGamePaused;
-      updateGalagaGameStatus(galagaGamePaused ? 'Game Paused' : 'Defend Earth!');
-      
-      if (galagaGamePaused) {
-        clearInterval(galagaGameLoop);
-        galagaGameLoop = null;
+  function initPacman() {
+    pacmanCanvas = document.getElementById('pacmanCanvas');
+    if (!pacmanCanvas) return;
+    pacmanCtx = pacmanCanvas.getContext('2d');
+
+  buildMaze();
+  pac.x = 1; pac.y = 1; pac.dir = {x:0,y:0}; pac.nextDir={x:0,y:0};
+  // reset ghosts to starting positions
+  ghosts[0].x = cols - 2; ghosts[0].y = rows - 2;
+  ghosts[1].x = cols - 3; ghosts[1].y = rows - 2;
+  ghosts[2].x = cols - 2; ghosts[2].y = rows - 3;
+    pacmanState.score = 0; pacmanState.lives = 3;
+
+    document.getElementById('startPacmanBtn')?.addEventListener('click', startPacman);
+    document.getElementById('pausePacmanBtn')?.addEventListener('click', pausePacman);
+    document.getElementById('resetPacmanBtn')?.addEventListener('click', resetPacman);
+
+    document.addEventListener('keydown', (e) => {
+      switch(e.code) {
+        case 'ArrowUp': pac.nextDir = {x:0,y:-1}; e.preventDefault(); break;
+        case 'ArrowDown': pac.nextDir = {x:0,y:1}; e.preventDefault(); break;
+        case 'ArrowLeft': pac.nextDir = {x:-1,y:0}; e.preventDefault(); break;
+        case 'ArrowRight': pac.nextDir = {x:1,y:0}; e.preventDefault(); break;
+        case 'Space': if (!pacmanRunning) startPacman(); else pausePacman(); e.preventDefault(); break;
+      }
+    });
+
+    // Touch controls: swipe to change direction, tap to start/pause
+    let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+    let touchMoved = false;
+
+    function onPacTouchStart(e) {
+      const t = e.touches[0];
+      if (!t) return;
+      const rect = pacmanCanvas.getBoundingClientRect();
+      touchStartX = t.clientX - rect.left;
+      touchStartY = t.clientY - rect.top;
+      touchStartTime = Date.now();
+      touchMoved = false;
+      e.preventDefault();
+    }
+
+    function onPacTouchMove(e) {
+      touchMoved = true;
+      const t = e.touches[0];
+      if (!t) return;
+      const rect = pacmanCanvas.getBoundingClientRect();
+      const moveX = (t.clientX - rect.left) - touchStartX;
+      const moveY = (t.clientY - rect.top) - touchStartY;
+
+      // threshold for direction change
+      const threshold = 20;
+      if (Math.abs(moveX) > Math.abs(moveY)) {
+        if (moveX > threshold) pac.nextDir = { x: 1, y: 0 };
+        else if (moveX < -threshold) pac.nextDir = { x: -1, y: 0 };
       } else {
-        galagaGameLoop = setInterval(updateGalagaGame, 16);
+        if (moveY > threshold) pac.nextDir = { x: 0, y: 1 };
+        else if (moveY < -threshold) pac.nextDir = { x: 0, y: -1 };
       }
+      e.preventDefault();
     }
-  }
 
-  function resetGalagaGame() {
-    galagaGameRunning = false;
-    galagaGamePaused = false;
-    
-    if (galagaGameLoop) {
-      clearInterval(galagaGameLoop);
-      galagaGameLoop = null;
-    }
-    
-    // Reset game state
-    gameState = {
-      score: 0,
-      lives: 3,
-      level: 1,
-      enemySpeed: 1,
-      enemyShootChance: 0.02
-    };
-    
-    // Reset arrays
-    bullets = [];
-    enemyBullets = [];
-    particles = [];
-    
-    // Reset player
-    player.x = galagaCanvas.width / 2 - player.width / 2;
-    player.y = galagaCanvas.height - 50;
-    
-    createEnemyFormation();
-    updateGalagaDisplay();
-    updateGalagaGameStatus('Press SPACE or click Start to begin defending Earth!');
-    drawGalagaGame();
-  }
-
-  function createEnemyFormation() {
-    enemies = [];
-    const rows = 4;
-    const cols = 10;
-    const startX = 50;
-    const startY = 50;
-    const spacing = 50;
-    
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        enemies.push({
-          x: startX + col * spacing,
-          y: startY + row * spacing,
-          width: 30,
-          height: 20,
-          alive: true,
-          type: row < 2 ? 'fighter' : 'bomber'
-        });
+    function onPacTouchEnd(e) {
+      const elapsed = Date.now() - touchStartTime;
+      // treat as tap if short and not moved much
+      if (!touchMoved && elapsed < 250) {
+        if (!pacmanRunning) startPacman(); else pausePacman();
       }
+      e.preventDefault();
     }
-  }
 
-  function updateGalagaGame() {
-    if (!galagaGameRunning || galagaGamePaused) return;
-    
-    // Move player bullets
-    bullets = bullets.filter(bullet => {
-      bullet.y -= 8;
-      return bullet.y > 0;
-    });
-    
-    // Move enemy bullets
-    enemyBullets = enemyBullets.filter(bullet => {
-      bullet.y += 4;
-      return bullet.y < galagaCanvas.height;
-    });
-    
-    // Move enemies
-    enemies.forEach(enemy => {
-      if (enemy.alive) {
-        enemy.x += gameState.enemySpeed;
-      }
-    });
-    
-    // Check if enemies hit wall
-    const rightmostEnemy = Math.max(...enemies.filter(e => e.alive).map(e => e.x + e.width));
-    const leftmostEnemy = Math.min(...enemies.filter(e => e.alive).map(e => e.x));
-    
-    if (rightmostEnemy >= galagaCanvas.width - 20 || leftmostEnemy <= 20) {
-      gameState.enemySpeed = -gameState.enemySpeed;
-      enemies.forEach(enemy => {
-        if (enemy.alive) {
-          enemy.y += 20;
-        }
+    pacmanCanvas.addEventListener('touchstart', onPacTouchStart, { passive: false });
+    pacmanCanvas.addEventListener('touchmove', onPacTouchMove, { passive: false });
+    pacmanCanvas.addEventListener('touchend', onPacTouchEnd, { passive: false });
+
+    // scale canvas for devicePixelRatio so tiles are crisp on retina
+    const dpr = window.devicePixelRatio || 1;
+    pacmanCanvas.width = cols * tileSize * dpr;
+    pacmanCanvas.height = rows * tileSize * dpr;
+    pacmanCanvas.style.width = (cols * tileSize) + 'px';
+    pacmanCanvas.style.height = (rows * tileSize) + 'px';
+    pacmanCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    resetPacman();
+    drawPacman();
+
+    // Create a dedicated Pac-Man overlay similar to snake overlay
+    let existingPacOverlay = document.getElementById('pacman-lose-overlay');
+    if (!existingPacOverlay) {
+      const overlay = document.createElement('div');
+      overlay.id = 'pacman-lose-overlay';
+      overlay.setAttribute('role','dialog');
+      overlay.setAttribute('aria-modal','true');
+      overlay.className = '';
+
+      const inner = document.createElement('div');
+      inner.className = 'panel';
+
+      const title = document.createElement('div');
+      title.id = 'pacman-lose-title';
+      title.className = 'title';
+      title.textContent = 'You Lost!';
+
+      const reason = document.createElement('div');
+      reason.id = 'pacman-lose-reason';
+      reason.className = 'reason';
+
+      const btn = document.createElement('button');
+      btn.id = 'pacman-restart-btn';
+      btn.className = 'restart-btn';
+      btn.textContent = 'Restart';
+      btn.addEventListener('click', () => {
+        overlay.classList.remove('show');
+        resetPacman();
+        startPacman();
       });
-    }
-    
-    // Enemy shooting
-    enemies.forEach(enemy => {
-      if (enemy.alive && Math.random() < gameState.enemyShootChance) {
-        enemyBullets.push({
-          x: enemy.x + enemy.width / 2,
-          y: enemy.y + enemy.height,
-          width: 3,
-          height: 10
-        });
+
+      inner.appendChild(title);
+      inner.appendChild(reason);
+      inner.appendChild(btn);
+      overlay.appendChild(inner);
+      const container = pacmanCanvas.parentElement || document.body;
+      container.style.position = container.style.position || 'relative';
+      container.appendChild(overlay);
+
+      function positionOverlay() {
+        const rect = pacmanCanvas.getBoundingClientRect();
+        const contRect = container.getBoundingClientRect();
+        overlay.style.left = (rect.left - contRect.left) + 'px';
+        overlay.style.top = (rect.top - contRect.top) + 'px';
+        overlay.style.width = rect.width + 'px';
+        overlay.style.height = rect.height + 'px';
       }
-    });
-    
-    // Collision detection - bullets vs enemies
-    for (let bulletIndex = bullets.length - 1; bulletIndex >= 0; bulletIndex--) {
-      const bullet = bullets[bulletIndex];
-      for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
-        const enemy = enemies[enemyIndex];
-        if (enemy.alive &&
-            bullet.x < enemy.x + enemy.width &&
-            bullet.x + bullet.width > enemy.x &&
-            bullet.y < enemy.y + enemy.height &&
-            bullet.y + bullet.height > enemy.y) {
-          
-          enemy.alive = false;
-          bullets.splice(bulletIndex, 1);
-          gameState.score += enemy.type === 'fighter' ? 100 : 150;
-          
-          // Create explosion particles
-          for (let i = 0; i < 8; i++) {
-            galagaParticles.push({
-              x: enemy.x + enemy.width / 2,
-              y: enemy.y + enemy.height / 2,
-              dx: (Math.random() - 0.5) * 6,
-              dy: (Math.random() - 0.5) * 6,
-              life: 30,
-              color: enemy.type === 'fighter' ? '#00ff88' : '#ff4444'
-            });
-          }
-          break; // Exit enemy loop after hit
-        }
+      positionOverlay();
+      window.addEventListener('resize', positionOverlay);
+      overlay._positionOverlay = positionOverlay;
+    }
+    // Wire D-pad buttons if present
+    const dpadUp = document.getElementById('dpad-up');
+    const dpadDown = document.getElementById('dpad-down');
+    const dpadLeft = document.getElementById('dpad-left');
+    const dpadRight = document.getElementById('dpad-right');
+
+    function attachDpad(btn, dir) {
+      if (!btn) return;
+      btn.addEventListener('touchstart', (e) => { pac.nextDir = dir; e.preventDefault(); }, { passive: false });
+      btn.addEventListener('mousedown', (e) => { pac.nextDir = dir; e.preventDefault(); });
+    }
+
+    attachDpad(dpadUp, {x:0,y:-1});
+    attachDpad(dpadDown, {x:0,y:1});
+    attachDpad(dpadLeft, {x:-1,y:0});
+    attachDpad(dpadRight, {x:1,y:0});
+  }
+
+  function startPacman() {
+    if (!pacmanRunning) {
+      pacmanRunning = true; pacmanPaused = false;
+  if (!pacmanLoop) pacmanLoop = setInterval(updatePacman, pacTickMs);
+      updatePacmanStatus('Game Running');
+  startGhostController();
+    }
+  }
+
+  function pausePacman() {
+    if (pacmanRunning) {
+      pacmanPaused = !pacmanPaused;
+  if (pacmanPaused) { clearInterval(pacmanLoop); pacmanLoop = null; updatePacmanStatus('Game Paused'); }
+  else { pacmanLoop = setInterval(updatePacman, pacTickMs); updatePacmanStatus('Game Running'); }
+    }
+  }
+
+  function resetPacman() {
+    pacmanRunning = false; pacmanPaused = false;
+    if (pacmanLoop) { clearInterval(pacmanLoop); pacmanLoop = null; }
+    buildMaze();
+    pac.x = 1; pac.y = 1; pac.dir = {x:0,y:0}; pac.nextDir={x:0,y:0};
+    ghost.x = cols - 2; ghost.y = rows - 2; ghost.dir = {x:0,y:0};
+    pacmanState.score = 0; pacmanState.lives = 3;
+    updatePacmanDisplay();
+    updatePacmanStatus('Press SPACE to start');
+    drawPacman();
+  stopGhostController();
+  }
+
+  function updatePacman() {
+    if (!pacmanRunning || pacmanPaused) return;
+    // attempt to turn if nextDir is available
+    const nx = pac.x + pac.nextDir.x;
+    const ny = pac.y + pac.nextDir.y;
+    if (canMoveTo(nx, ny)) pac.dir = { ...pac.nextDir };
+
+    const tx = pac.x + pac.dir.x;
+    const ty = pac.y + pac.dir.y;
+    if (canMoveTo(tx, ty)) {
+      pac.x = tx; pac.y = ty;
+    }
+
+    // collect pellet if present
+    for (let i = pellets.length -1; i >= 0; i--) {
+      const p = pellets[i];
+      if (p.x === pac.x && p.y === pac.y) {
+        pacmanState.score += p.power ? 50 : 10;
+        pellets.splice(i,1);
       }
     }
-    
-    // Collision detection - enemy bullets vs player
-    for (let bulletIndex = enemyBullets.length - 1; bulletIndex >= 0; bulletIndex--) {
-      const bullet = enemyBullets[bulletIndex];
-      if (bullet.x < player.x + player.width &&
-          bullet.x + bullet.width > player.x &&
-          bullet.y < player.y + player.height &&
-          bullet.y + bullet.height > player.y) {
-        
-        enemyBullets.splice(bulletIndex, 1);
-        gameState.lives--;
-        
-        // Create explosion particles
-        for (let i = 0; i < 12; i++) {
-          galagaParticles.push({
-            x: player.x + player.width / 2,
-            y: player.y + player.height / 2,
-            dx: (Math.random() - 0.5) * 8,
-            dy: (Math.random() - 0.5) * 8,
-            life: 40,
-            color: '#ffaa00'
-          });
-        }
-        
-        if (gameState.lives <= 0) {
-          gameOver();
+
+    // collision with any ghost
+    for (let gi = 0; gi < ghosts.length; gi++) {
+      const g = ghosts[gi];
+      if (g.x === pac.x && g.y === pac.y) {
+        pacmanState.lives--;
+        if (pacmanState.lives <= 0) {
+          pacLose('Captured by ghost');
           return;
+        } else {
+          // reset positions (pacman and ghosts)
+          pac.x = 1; pac.y = 1; pac.dir = {x:0,y:0}; pac.nextDir={x:0,y:0};
+          ghosts[0].x = cols - 2; ghosts[0].y = rows - 2;
+          ghosts[1].x = cols - 3; ghosts[1].y = rows - 2;
+          ghosts[2].x = cols - 2; ghosts[2].y = rows - 3;
+          break;
         }
-        break; // Exit after first hit
       }
     }
-    
-    // Update particles
-    galagaParticles = galagaParticles.filter(particle => {
-      particle.x += particle.dx;
-      particle.y += particle.dy;
-      particle.life--;
-      return particle.life > 0;
-    });
-    
-    // Check level completion
-    const aliveEnemies = enemies.filter(e => e.alive);
-    if (aliveEnemies.length === 0) {
-      gameState.level++;
-      gameState.enemySpeed += 0.5;
-      gameState.enemyShootChance += 0.005;
-      createEnemyFormation();
+
+    // win condition: all pellets collected
+    if (pellets.length === 0) {
+      pacmanWin();
+      return;
     }
-    
-    updateGalagaDisplay();
-    drawGalagaGame();
+
+    updatePacmanDisplay();
+    drawPacman();
   }
 
-  function gameOver() {
-    galagaGameRunning = false;
-    galagaGamePaused = false;
-    
-    if (galagaGameLoop) {
-      clearInterval(galagaGameLoop);
-      galagaGameLoop = null;
-    }
-    
-    updateGalagaGameStatus(`Game Over! Final Score: ${gameState.score}`);
+  function canMoveTo(x,y) {
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return false;
+    return maze[y][x] === 0;
   }
 
-  function drawGalagaGame() {
-    if (!galagaCtx) return;
-    
-    // Clear canvas with space background
-    galagaCtx.fillStyle = 'rgba(0, 0, 20, 0.9)';
-    galagaCtx.fillRect(0, 0, galagaCanvas.width, galagaCanvas.height);
-    
-    // Draw stars
-    for (let i = 0; i < 50; i++) {
-      galagaCtx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
-      galagaCtx.fillRect(i * 12, (i * 7) % galagaCanvas.height, 1, 1);
+  function randomGhostMove(g) {
+    const options = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+    // shuffle
+    for (let i = options.length-1;i>0;i--) { const j = Math.floor(Math.random()*(i+1)); [options[i],options[j]]=[options[j],options[i]]; }
+    for (const o of options) {
+      if (canMoveTo(g.x+o.x, g.y+o.y)) return o;
     }
-    
-    // Draw player ship
-    galagaCtx.fillStyle = '#00d4ff';
-    galagaCtx.fillRect(player.x, player.y, player.width, player.height);
-    
-    // Draw player ship details
-    galagaCtx.fillStyle = '#ffffff';
-    galagaCtx.fillRect(player.x + 5, player.y - 5, 30, 5);
-    
-    // Draw bullets
-    galagaCtx.fillStyle = '#00ff88';
-    bullets.forEach(bullet => {
-      galagaCtx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-    });
-    
-    // Draw enemy bullets
-    galagaCtx.fillStyle = '#ff4444';
-    enemyBullets.forEach(bullet => {
-      galagaCtx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-    });
-    
-    // Draw enemies
-    enemies.forEach(enemy => {
-      if (enemy.alive) {
-        galagaCtx.fillStyle = enemy.type === 'fighter' ? '#ff00ff' : '#ffaa00';
-        galagaCtx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-        
-        // Enemy details
-        galagaCtx.fillStyle = '#ffffff';
-        galagaCtx.fillRect(enemy.x + 5, enemy.y + 2, 20, 2);
-        galagaCtx.fillRect(enemy.x + 10, enemy.y + 8, 10, 2);
+    return null;
+  }
+
+  // ===== A* pathfinding (grid-based) =====
+  function aStarPath(startX, startY, goalX, goalY) {
+    const inBounds = (x,y) => x >= 0 && x < cols && y >= 0 && y < rows;
+    const key = (x,y) => `${x},${y}`;
+    const open = new Map(); // key -> fScore
+    const cameFrom = new Map();
+    const gScore = new Map();
+
+    function h(x,y) { return Math.abs(x - goalX) + Math.abs(y - goalY); } // Manhattan
+
+    const startKey = key(startX,startY);
+    open.set(startKey, h(startX,startY));
+    gScore.set(startKey, 0);
+
+    while (open.size > 0) {
+      // pick node in open with lowest f = g + h
+      let currentKey = null; let currentF = Infinity;
+      for (const [k,f] of open.entries()) {
+        if (f < currentF) { currentF = f; currentKey = k; }
       }
+      const [cx, cy] = currentKey.split(',').map(Number);
+
+      if (cx === goalX && cy === goalY) {
+        // reconstruct path
+        const path = [];
+        let k = currentKey;
+        while (cameFrom.has(k)) {
+          const prev = cameFrom.get(k);
+          const [px,py] = k.split(',').map(Number);
+          path.push({ x: px, y: py });
+          k = `${prev.x},${prev.y}`;
+        }
+        path.reverse();
+        return path;
+      }
+
+      open.delete(currentKey);
+
+      const neighbors = [{x:cx+1,y:cy},{x:cx-1,y:cy},{x:cx,y:cy+1},{x:cx,y:cy-1}];
+      for (const n of neighbors) {
+        if (!inBounds(n.x,n.y)) continue;
+        if (!canMoveTo(n.x,n.y)) continue;
+        const nk = key(n.x,n.y);
+        const tentativeG = gScore.get(currentKey) + 1;
+        if (tentativeG < (gScore.get(nk) || Infinity)) {
+          cameFrom.set(nk, { x: cx, y: cy });
+          gScore.set(nk, tentativeG);
+          open.set(nk, tentativeG + h(n.x,n.y));
+        }
+      }
+    }
+    return null;
+  }
+
+  // Ghost controller: runs at a tuned interval to compute path and step along it
+  let ghostPath = [];
+  let ghostStepInterval = 300; // ms per ghost step (tune for difficulty)
+  let ghostIntervalId = null;
+
+  function startGhostController() {
+    // create per-ghost intervals (staggered)
+    stopGhostController();
+    ghosts.forEach((g, idx) => {
+      const interval = Math.max(140, ghostBaseInterval - idx * 40); // stagger speed by index
+      const id = setInterval(() => {
+        if (!pacmanRunning) return;
+        // compute path using A*
+        const path = aStarPath(g.x, g.y, pac.x, pac.y);
+        if (path && path.length > 0) {
+          const next = path[0];
+          g.x = next.x; g.y = next.y;
+        } else {
+          const step = randomGhostMove(g);
+          if (step) { g.x += step.x; g.y += step.y; }
+        }
+      }, interval);
+      // store id on ghost for cleanup
+      g._intervalId = id;
     });
-    
-    // Draw particles
-    galagaParticles.forEach(particle => {
-      galagaCtx.fillStyle = particle.color;
-      galagaCtx.fillRect(particle.x, particle.y, 2, 2);
+  }
+
+  function stopGhostController() {
+    ghosts.forEach(g => {
+      if (g._intervalId) { clearInterval(g._intervalId); delete g._intervalId; }
     });
   }
 
-  function handleGalagaKeyPress(e) {
-    if (!galagaGameRunning && e.code === 'Space') {
-      e.preventDefault();
-      startGalagaGame();
-      return;
-    }
-    
-    if (galagaGameRunning && e.code === 'Space') {
-      e.preventDefault();
-      pauseGalagaGame();
-      return;
-    }
-    
-    if (!galagaGameRunning || galagaGamePaused) return;
-    
-    switch(e.code) {
-      case 'ArrowLeft':
-      case 'KeyA':
-        player.x = Math.max(0, player.x - player.speed);
-        e.preventDefault();
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        player.x = Math.min(galagaCanvas.width - player.width, player.x + player.speed);
-        e.preventDefault();
-        break;
-      case 'Space':
-        e.preventDefault();
-        // Shoot bullet
-        bullets.push({
-          x: player.x + player.width / 2 - 1,
-          y: player.y,
-          width: 3,
-          height: 10
-        });
-        break;
+  function stopGhostController() {
+    if (ghostIntervalId) { clearInterval(ghostIntervalId); ghostIntervalId = null; }
+  }
+
+  function pacLose(reason) {
+    pacmanRunning = false;
+    if (pacmanLoop) { clearInterval(pacmanLoop); pacmanLoop = null; }
+  stopGhostController();
+    const status = document.getElementById('pacman-game-status');
+    if (status) status.textContent = `You lost: ${reason}`;
+    const overlay = document.getElementById('pacman-lose-overlay');
+    if (overlay) {
+      const title = document.getElementById('pacman-lose-title');
+      const reasonEl = document.getElementById('pacman-lose-reason');
+      if (title) title.textContent = 'Pac-Man Lost!';
+      if (reasonEl) reasonEl.textContent = reason;
+      overlay.classList.add('show');
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      const btn = document.getElementById('pacman-restart-btn');
+      if (btn) btn.focus();
     }
   }
 
-  function updateGalagaDisplay() {
-    document.getElementById('galaga-score').textContent = gameState.score;
-    document.getElementById('galaga-lives').textContent = gameState.lives;
-    document.getElementById('galaga-level').textContent = gameState.level;
+  function pacmanWin() {
+    pacmanRunning = false;
+    if (pacmanLoop) { clearInterval(pacmanLoop); pacmanLoop = null; }
+    const status = document.getElementById('pacman-game-status');
+    if (status) status.textContent = 'You cleared the maze!';
   }
 
-  function updateGalagaGameStatus(message) {
-    const statusEl = document.getElementById('galaga-game-status');
-    if (statusEl) {
-      statusEl.textContent = message;
+  function drawPacman() {
+    if (!pacmanCtx) return;
+    // clear
+    pacmanCtx.fillStyle = 'rgba(0,0,0,0.95)';
+    pacmanCtx.fillRect(0,0,pacmanCanvas.width,pacmanCanvas.height);
+
+    // draw maze walls
+    pacmanCtx.fillStyle = '#204080';
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (maze[r][c] === 1) {
+          pacmanCtx.fillRect(c*tileSize, r*tileSize, tileSize, tileSize);
+        }
+      }
     }
+
+    // draw pellets
+    pacmanCtx.fillStyle = '#ffd86b';
+    pellets.forEach(p => {
+      const size = p.power ? 6 : 3;
+      pacmanCtx.beginPath();
+      pacmanCtx.arc(p.x*tileSize + tileSize/2, p.y*tileSize + tileSize/2, size, 0, Math.PI*2);
+      pacmanCtx.fill();
+    });
+
+    // draw pac
+    pacmanCtx.fillStyle = '#ffd86b';
+    pacmanCtx.beginPath();
+    pacmanCtx.arc(pac.x*tileSize + tileSize/2, pac.y*tileSize + tileSize/2, tileSize/2 -2, 0, Math.PI*2);
+    pacmanCtx.fill();
+
+    // draw ghosts
+    ghosts.forEach(g => {
+      pacmanCtx.fillStyle = g.color || '#ff6b6b';
+      pacmanCtx.fillRect(g.x*tileSize+2, g.y*tileSize+4, tileSize-4, tileSize-6);
+    });
+
+    updateConfetti(); // ensure confetti (from snake) doesn't conflict, lightweight
   }
 
-  // Initialize Galaga game if elements exist
-  if (document.getElementById('galagaCanvas')) {
-    initGalagaGame();
-    console.log('Galaga game initialized');
+  function updatePacmanDisplay() {
+    document.getElementById('pacman-score').textContent = pacmanState.score;
+    document.getElementById('pacman-lives').textContent = pacmanState.lives;
+  }
+
+  function updatePacmanStatus(message) {
+    const statusEl = document.getElementById('pacman-game-status');
+    if (statusEl) statusEl.textContent = message;
+  }
+
+  // Initialize Pac-Man if canvas exists
+  if (document.getElementById('pacmanCanvas')) {
+    initPacman();
+    console.log('Pac-Man initialized');
   }
 
 });
