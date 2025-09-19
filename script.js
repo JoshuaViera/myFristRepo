@@ -105,7 +105,7 @@
     const now = new Date();
     // local date (top-left)
     const localDate = now.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
-  if (dateEl) dateEl.textContent = localDate;
+    if (dateEl) dateEl.textContent = localDate;
 
     // New York time in standard (12-hour) format with AM/PM
     // Ensure legacy feature registry entries exist without invoking undefined functions.
@@ -114,6 +114,23 @@
       App.features.initPacman = App.features.initPacman || function() { console.warn('Pacman module not loaded yet.'); };
     } catch (e) {
       console.warn('updateDateAndTime: failed to ensure App.features', e);
+    }
+    // Format and show New York time (falls back to local time if Intl timezone unsupported)
+    try {
+      if (nyTimeEl) {
+        let nyTime;
+        try {
+          nyTime = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'America/New_York' }).format(now);
+        } catch (tzErr) {
+          // fallback: compute using UTC offset for Eastern Time (approximate)
+          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+          // Eastern Time offset: -4 or -5 hours depending on DST; use toLocaleString as safer fallback
+          nyTime = new Date(utc - (4 * 60 * 60000)).toLocaleTimeString();
+        }
+        nyTimeEl.textContent = nyTime;
+      }
+    } catch (e) {
+      console.warn('updateDateAndTime: failed to format NY time', e);
     }
     // Note: animateParticles is part of the particle demo and may live in a module; do not call it unguarded here.
   }
