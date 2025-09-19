@@ -18,6 +18,7 @@ const loadLegacyScript = (src = 'script.js') => {
 
 (async function() {
   try {
+  console.info('loader.js: executing dynamic loader');
     await loadLegacyScript('script.js');
     // toggle debug via query ?debug=1 or set here
     if (new URLSearchParams(window.location.search).get('debug') === '1') {
@@ -26,7 +27,7 @@ const loadLegacyScript = (src = 'script.js') => {
     // small notification for developers
     if (window.App) window.App.debug('loader: legacy script.js loaded');
 
-    // Dynamically import ES module wrappers for each feature so we can migrate incrementally.
+  // Dynamically import ES module wrappers for each feature so we can migrate incrementally.
     try {
       await import('./features/particles.js');
       await import('./features/neural.js');

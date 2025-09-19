@@ -1,5 +1,75 @@
 // Consolidated JavaScript for time/date, theme toggle, and quote functionality
-document.addEventListener('DOMContentLoaded', function() {
+  function _mainDOMContentLoaded() {
+  console.info('script.js: DOMContentLoaded handler running');
+
+  // --- Temporary debugging helpers (remove after we finish debugging) ---
+  (function setupDevLog() {
+    try {
+      const devLog = document.createElement('div');
+      devLog.id = 'dev-log';
+      devLog.style.position = 'fixed';
+      devLog.style.right = '12px';
+      devLog.style.bottom = '12px';
+      devLog.style.width = '320px';
+      devLog.style.maxHeight = '40vh';
+      devLog.style.overflow = 'auto';
+      devLog.style.background = 'rgba(255, 255, 255, 0.85)';
+      devLog.style.color = '#fff';
+      devLog.style.fontSize = '12px';
+      devLog.style.padding = '8px';
+      devLog.style.borderRadius = '6px';
+      devLog.style.zIndex = 99999;
+      devLog.style.fontFamily = 'monospace';
+      devLog.innerHTML = '<strong>DEV LOG</strong><br/>';
+      document.body.appendChild(devLog);
+
+      function append(msg, level='info') {
+        const time = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.textContent = `[${time}] ${msg}`;
+        line.style.marginTop = '4px';
+        if (level === 'error') line.style.color = '#ff6b6b';
+        devLog.appendChild(line);
+        devLog.scrollTop = devLog.scrollHeight;
+        // also mirror to console
+        console[level === 'error' ? 'error' : 'log']('[dev-log]', msg);
+      }
+
+      window.__devLog = append;
+
+      window.addEventListener('error', (e) => {
+        append(`Uncaught error: ${e.message} @ ${e.filename || ''}:${e.lineno || ''}`, 'error');
+      });
+      window.addEventListener('unhandledrejection', (ev) => {
+        append(`UnhandledRejection: ${ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)}`, 'error');
+      });
+
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('button');
+        if (btn) {
+          append(`CLICK: id=${btn.id || 'n/a'} data-action=${btn.dataset.action || 'n/a'} text="${(btn.textContent||'').trim().slice(0,40)}"`);
+        }
+      }, true);
+
+      // Wrap addEventListener to surface handler exceptions to the dev log. This is temporary.
+      const _add = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function(type, listener, options) {
+        if (typeof listener === 'function') {
+          const wrapped = function(...args) {
+            try { return listener.apply(this, args); }
+            catch (err) { append(`Handler error (${type}): ${err && err.stack ? err.stack.split('\n')[0] : err}`, 'error'); throw err; }
+          };
+          // store reference for potential removal (best-effort)
+          wrapped.__original = listener;
+          return _add.call(this, type, wrapped, options);
+        }
+        return _add.call(this, type, listener, options);
+      };
+    } catch (e) {
+      console.warn('setupDevLog failed', e);
+    }
+  })();
+
   // Application namespace to reduce global scope pollution
   const App = {
     DEBUG: false,
@@ -35,13 +105,54 @@ document.addEventListener('DOMContentLoaded', function() {
     const now = new Date();
     // local date (top-left)
     const localDate = now.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
-    dateEl.textContent = localDate;
+  if (dateEl) dateEl.textContent = localDate;
 
     // New York time in standard (12-hour) format with AM/PM
-    // Pac-Man moved to ES module: js/features/pacman.js
-    App.features.initPacman = App.features.initPacman || function() { console.warn('Pacman module not loaded yet.'); };
-    animationId = requestAnimationFrame(animateParticles);
+    // Ensure legacy feature registry entries exist without invoking undefined functions.
+    try {
+      App.features = App.features || {};
+      App.features.initPacman = App.features.initPacman || function() { console.warn('Pacman module not loaded yet.'); };
+    } catch (e) {
+      console.warn('updateDateAndTime: failed to ensure App.features', e);
+    }
+    // Note: animateParticles is part of the particle demo and may live in a module; do not call it unguarded here.
   }
+
+  // Apply saved theme and wire up theme toggle button
+  (function setupThemeToggle() {
+    try {
+      const themeBtn = document.getElementById('themeBtn');
+      const root = document.documentElement;
+      const applyTheme = (theme) => {
+        // styles.css uses `.theme-alt` for the alternate theme
+        if (theme === 'alt') root.classList.add('theme-alt'); else root.classList.remove('theme-alt');
+        // add a small animation class to container for visual feedback
+        root.classList.add('theme-transition');
+        setTimeout(() => root.classList.remove('theme-transition'), 500);
+        if (themeBtn) themeBtn.setAttribute('aria-pressed', theme === 'alt' ? 'true' : 'false');
+      };
+      // read persisted theme
+      const saved = localStorage.getItem('siteTheme');
+      if (saved) applyTheme(saved);
+
+      if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+          const isAlt = root.classList.contains('theme-alt');
+          const next = isAlt ? 'light' : 'alt';
+          applyTheme(next);
+          try { localStorage.setItem('siteTheme', next); } catch (e) {}
+        });
+      }
+    } catch (e) { console.warn('setupThemeToggle failed', e); }
+  })();
+
+  // Start periodic date/time updates (defensive: only if the elements exist)
+  try {
+    if (dateEl || nyTimeEl) {
+      updateDateAndTime();
+      setInterval(updateDateAndTime, 1000);
+    }
+  } catch (e) { console.warn('Failed to start date/time updater', e); }
 
   // ===== NEURAL NETWORK VISUALIZER =====
   let neuralCanvas, neuralCtx, neuralNetwork;
@@ -279,7 +390,9 @@ document.addEventListener('DOMContentLoaded', function() {
    * Initialize the particle system demo.
    * @public
    */
-  App.features.initParticleSystem = initParticleSystem;
+  // Avoid referencing an undeclared `initParticleSystem` which can throw a ReferenceError.
+  // Use typeof guard and a safe no-op shim so modules can rely on App.features.registered names.
+  App.features.initParticleSystem = App.features.initParticleSystem || (typeof initParticleSystem === 'function' ? initParticleSystem : function() { console.warn('Particle system init not available yet.'); });
 
   /**
    * Initialize the neural network visualizer demo.
@@ -970,6 +1083,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Run auto-init once after DOM load. Modules that register later may still attempt to auto-init themselves on import.
-  autoInitFeatures();
+    autoInitFeatures();
+  }
 
-});
+  // If document already loaded, run immediately; otherwise wait for DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _mainDOMContentLoaded);
+  } else {
+    _mainDOMContentLoaded();
+  }
