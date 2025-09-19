@@ -1101,6 +1101,93 @@
 
   // Run auto-init once after DOM load. Modules that register later may still attempt to auto-init themselves on import.
     autoInitFeatures();
+  
+  // ===== TIC-TAC-TOE (lightweight page-scoped implementation) =====
+  function initTicTacToe() {
+    const boardEl = document.querySelectorAll('.tic-tac-toe-board .cell');
+    if (!boardEl || boardEl.length !== 9) return;
+    const statusEl = document.getElementById('game-status');
+    const scoreX = document.getElementById('score-x');
+    const scoreO = document.getElementById('score-o');
+    const scoreTie = document.getElementById('score-tie');
+    const resetBtn = document.getElementById('resetGameBtn');
+    const resetScoreBtn = document.getElementById('resetScoreBtn');
+
+    let board = Array(9).fill(null);
+    let turn = 'X';
+    let running = true;
+    let scores = { X: 0, O: 0, T: 0 };
+
+    function updateStatus() { if (statusEl) statusEl.textContent = running ? `Player ${turn}'s turn` : 'Game paused'; }
+    function updateScores() { if (scoreX) scoreX.textContent = scores.X; if (scoreO) scoreO.textContent = scores.O; if (scoreTie) scoreTie.textContent = scores.T; }
+
+    function checkWin(b) {
+      const wins = [ [0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6] ];
+      for (const w of wins) {
+        const [a,b1,c] = w;
+        if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+      }
+      return null;
+    }
+
+    function handleCellClick(e) {
+      const idx = parseInt(e.currentTarget.dataset.index, 10);
+      if (!running) return;
+      if (board[idx]) return; // already occupied
+      board[idx] = turn;
+      e.currentTarget.classList.add(turn.toLowerCase());
+      e.currentTarget.textContent = turn;
+      const winner = checkWin(board);
+      if (winner) {
+        running = false;
+        updateStatus();
+        scores[winner]++;
+        updateScores();
+        // highlight win
+        // (simple: add winning class to cells)
+        // find winning triple
+        const wins = [ [0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6] ];
+        for (const w of wins) {
+          const [a,b1,c] = w;
+          if (board[a] && board[a] === board[b1] && board[a] === board[c]) {
+            [a,b1,c].forEach(i=>{ boardEl[i].classList.add('winning'); });
+            break;
+          }
+        }
+        return;
+      }
+      if (board.every(Boolean)) {
+        running = false;
+        scores.T++;
+        updateScores();
+        if (statusEl) statusEl.textContent = 'Tie!';
+        return;
+      }
+      // next turn
+      turn = turn === 'X' ? 'O' : 'X';
+      updateStatus();
+    }
+
+    function resetBoard() {
+      board = Array(9).fill(null);
+      turn = 'X';
+      running = true;
+      boardEl.forEach(cell => { cell.textContent = ''; cell.classList.remove('x','o','winning'); });
+      if (statusEl) statusEl.textContent = `Player ${turn}'s turn`;
+    }
+
+    resetBtn?.addEventListener('click', () => { resetBoard(); });
+    resetScoreBtn?.addEventListener('click', () => { scores = { X:0, O:0, T:0 }; updateScores(); resetBoard(); });
+
+    boardEl.forEach(cell => {
+      cell.addEventListener('click', handleCellClick);
+    });
+
+    // expose/reset initial
+    updateScores(); updateStatus();
+  }
+
+  App.features.initTicTacToe = App.features.initTicTacToe || initTicTacToe;
   }
 
   // If document already loaded, run immediately; otherwise wait for DOMContentLoaded
