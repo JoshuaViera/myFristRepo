@@ -88,8 +88,4 @@ if (typeof window !== 'undefined') {
   window.App.debug && window.App.debug('pacman module loaded. initPacman registered');
 }
 
-if (typeof document !== 'undefined' && document.getElementById('pacmanCanvas')) {
-  try { initPacman(); window.App && window.App.debug && window.App.debug('pacman auto-init: success'); } catch (e) { console.warn('pacman auto-init failed', e); }
-}
-
 export { initPacman, startPacman, resetPacman };

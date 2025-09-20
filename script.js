@@ -14,7 +14,8 @@
       devLog.style.maxHeight = '40vh';
       devLog.style.overflow = 'auto';
       devLog.style.background = 'rgba(255, 255, 255, 0.85)';
-      devLog.style.color = '#fff';
+      // Use dark text on light background for readability
+      devLog.style.color = '#111';
       devLog.style.fontSize = '12px';
       devLog.style.padding = '8px';
       devLog.style.borderRadius = '6px';
@@ -95,6 +96,13 @@
   const DEBUG = App.DEBUG;
   const debug = App.debug;
 
+  // Provide a safe no-op for updateConfetti if not present (prevents early crashes on pages without snake module)
+  try {
+    if (typeof window.updateConfetti !== 'function') {
+      window.updateConfetti = function noopUpdateConfetti(){};
+    }
+  } catch(_){}
+
   // ===== TIME/DATE FUNCTIONALITY =====
   const dateEl = document.getElementById('date');
   const nyTimeEl = document.getElementById('time-ny');
@@ -170,6 +178,28 @@
       setInterval(updateDateAndTime, 1000);
     }
   } catch (e) { console.warn('Failed to start date/time updater', e); }
+
+  // Global guard: prevent page scrolling with Arrow keys / Space when Snake canvas exists
+  try {
+    const blockKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD'];
+    document.addEventListener('keydown', (e) => {
+      try {
+        if (!document.getElementById('snakeCanvas')) return;
+        if (blockKeys.includes(e.code)) {
+          e.preventDefault();
+        }
+      } catch(_){}
+    }, { capture: true });
+    // Also guard at window-level capture to ensure prevention even if focus is on window/body
+    window.addEventListener('keydown', (e) => {
+      try {
+        if (!document.getElementById('snakeCanvas')) return;
+        if (blockKeys.includes(e.code)) {
+          e.preventDefault();
+        }
+      } catch(_){}
+    }, { capture: true });
+  } catch (e) { console.warn('Failed to install global key guard', e); }
 
   // ===== NEURAL NETWORK VISUALIZER =====
   let neuralCanvas, neuralCtx, neuralNetwork;
@@ -546,6 +576,29 @@
     const activeDemo = document.querySelector('.demo-tab.active').dataset.demo;
     initializeDemo(activeDemo);
   }
+
+  // Wire up demo tab switching to ensure proper section toggling and initialization
+  (function setupDemoTabs(){
+    try {
+      const tabs = document.querySelectorAll('.demo-tab');
+      const sections = document.querySelectorAll('.demo-section');
+      if (!tabs || !tabs.length) return;
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // toggle active tab
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          // toggle sections
+          const demo = tab.dataset.demo;
+          sections.forEach(sec => sec.classList.remove('active'));
+          const section = document.getElementById(`${demo}-demo`);
+          if (section) section.classList.add('active');
+          // initialize selected demo
+          initializeDemo(demo);
+        });
+      });
+    } catch (e) { console.warn('setupDemoTabs failed', e); }
+  })();
 
   // Snake game moved to ES module: js/features/snake.js
   // Backwards-compatible initializer (will be overridden by module when imported)
@@ -1055,7 +1108,6 @@
       pacmanCtx.fillRect(g.x*tileSize+2, g.y*tileSize+4, tileSize-4, tileSize-6);
     });
 
-    updateConfetti(); // ensure confetti (from snake) doesn't conflict, lightweight
   }
 
   function updatePacmanDisplay() {
@@ -1070,8 +1122,17 @@
 
   // Initialize Pac-Man if canvas exists
   if (document.getElementById('pacmanCanvas')) {
-  initPacman();
-  debug('Pac-Man initialized');
+    // Guard against double initialization across legacy/module
+    if (!window.__pacmanInited) {
+      window.__pacmanInited = true;
+      try {
+        initPacman();
+        debug('Pac-Man initialized');
+      } catch (e) {
+        console.warn('Pac-Man init failed (continuing):', e);
+        try { window.__devLog && window.__devLog(`Pac-Man init failed: ${e && e.message ? e.message : e}`,'error'); } catch(_){}
+      }
+    }
   }
 
   // Auto-initialize any feature modules when their DOM elements are present.
@@ -1084,7 +1145,8 @@
       { id: 'pingpongCanvas', fn: registry.initPingPongGame || initPingPongGame },
       { id: 'matrixCanvas', fn: registry.initMatrixRain || initMatrixRain },
       { id: 'neuralCanvas', fn: registry.initNeuralNetwork || initNeuralNetwork },
-      { id: 'particlesCanvas', fn: registry.initParticleSystem || initParticleSystem }
+      // Correct canvas id for particles is 'particleCanvas' (singular)
+      { id: 'particleCanvas', fn: registry.initParticleSystem || initParticleSystem }
     ];
 
     attempts.forEach(a => {
@@ -1106,6 +1168,7 @@
   function initTicTacToe() {
     const boardEl = document.querySelectorAll('.tic-tac-toe-board .cell');
     if (!boardEl || boardEl.length !== 9) return;
+    try { window.__devLog && window.__devLog(`TicTacToe: init with ${boardEl.length} cells`); } catch(_){}
     const statusEl = document.getElementById('game-status');
     const scoreX = document.getElementById('score-x');
     const scoreO = document.getElementById('score-o');
@@ -1131,6 +1194,7 @@
     }
 
     function handleCellClick(e) {
+      try { window.__devLog && window.__devLog(`TicTacToe: cell click idx=${e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.index : 'n/a'} running=${running}`); } catch(_){}
       const idx = parseInt(e.currentTarget.dataset.index, 10);
       if (!running) return;
       if (board[idx]) return; // already occupied
@@ -1176,7 +1240,7 @@
       if (statusEl) statusEl.textContent = `Player ${turn}'s turn`;
     }
 
-    resetBtn?.addEventListener('click', () => { resetBoard(); });
+    resetBtn?.addEventListener('click', () => { try { window.__devLog && window.__devLog('TicTacToe: reset board'); } catch(_){} resetBoard(); });
     resetScoreBtn?.addEventListener('click', () => { scores = { X:0, O:0, T:0 }; updateScores(); resetBoard(); });
 
     boardEl.forEach(cell => {
@@ -1188,6 +1252,14 @@
   }
 
   App.features.initTicTacToe = App.features.initTicTacToe || initTicTacToe;
+  // Auto-init Tic Tac Toe once if its board exists on the page
+  try {
+    if (!window.__tttInited && document.querySelector('.tic-tac-toe-board .cell')) {
+      window.__tttInited = true;
+      initTicTacToe();
+      debug('TicTacToe initialized');
+    }
+  } catch (e) { console.warn('TicTacToe auto-init failed', e); }
   }
 
   // If document already loaded, run immediately; otherwise wait for DOMContentLoaded

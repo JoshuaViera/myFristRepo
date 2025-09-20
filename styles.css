@@ -116,6 +116,12 @@ html,body{
   align-items:center;
 }
 
+/* Center the Tic Tac Toe control buttons */
+#ttt-controls {
+  justify-content: center;
+  width: 100%;
+}
+
 .bot-thinking{
   display:inline-flex;
   align-items:center;

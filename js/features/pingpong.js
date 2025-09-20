@@ -57,8 +57,4 @@ if (typeof window !== 'undefined') {
   window.App.debug && window.App.debug('pingpong module loaded. initPingPongGame registered');
 }
 
-if (typeof document !== 'undefined' && document.getElementById('pingpongCanvas')) {
-  try { initPingPongGame(); window.App && window.App.debug && window.App.debug('pingpong auto-init: success'); } catch (e) { console.warn('pingpong auto-init failed', e); }
-}
-
 export { initPingPongGame };
