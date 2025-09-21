@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tic Tac Toe — Joshua's First AI Webpage</title>
-    <link rel="stylesheet" href="styles.css?v=tttfix1">
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <div class="page">
@@ -209,41 +209,6 @@
       </div>
     </div>
 
-  <script>
-    // Bootstrap global App namespace and no-op confetti before loader
-    window.App = window.App || { DEBUG: false, features: {}, utils: {} };
-    window.App.features = window.App.features || {};
-    window.App.utils = window.App.utils || {};
-    window.updateConfetti = window.updateConfetti || function(){};
-    try { var App = window.App; } catch(_){}
-  </script>
-  <script type="module" src="js/loader.js?v=tttfix3"></script>
-  <script>
-    // Robust post-load initializer for GitHub Pages: retries briefly to allow module registration
-    (function(){
-      const start = Date.now();
-      function tryInit(){
-        try {
-          const feats = (window.App && window.App.features) || {};
-          if (document.getElementById('pingpongCanvas') && typeof feats.initPingPongGame === 'function' && !window.__pingpongInited) {
-            window.__pingpongInited = true; feats.initPingPongGame();
-          }
-          if (document.getElementById('pacmanCanvas') && typeof feats.initPacman === 'function' && !window.__pacmanInited) {
-            window.__pacmanInited = true; feats.initPacman();
-          }
-          if (document.getElementById('snakeCanvas') && typeof feats.initSnakeGame === 'function' && !window.__snakeInited) {
-            window.__snakeInited = true; feats.initSnakeGame();
-          }
-          // stop when all present or timeout after 2s
-          const done = (!document.getElementById('pingpongCanvas') || window.__pingpongInited)
-                    && (!document.getElementById('pacmanCanvas') || window.__pacmanInited)
-                    && (!document.getElementById('snakeCanvas') || window.__snakeInited);
-          if (done || (Date.now() - start) > 2000) return;
-        } catch (e) { /* ignore and retry */ }
-        setTimeout(tryInit, 100);
-      }
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tryInit); else tryInit();
-    })();
-  </script>
+  <script type="module" src="js/loader.js"></script>
   </body>
 </html>

@@ -1175,11 +1175,14 @@
     const scoreTie = document.getElementById('score-tie');
     const resetBtn = document.getElementById('resetGameBtn');
     const resetScoreBtn = document.getElementById('resetScoreBtn');
+    const botThinkingEl = document.getElementById('bot-thinking');
 
     let board = Array(9).fill(null);
     let turn = 'X';
     let running = true;
     let scores = { X: 0, O: 0, T: 0 };
+    const vsAI = true; // enable AI opponent by default
+    const aiPlayer = 'O';
 
     function updateStatus() { if (statusEl) statusEl.textContent = running ? `Player ${turn}'s turn` : 'Game paused'; }
     function updateScores() { if (scoreX) scoreX.textContent = scores.X; if (scoreO) scoreO.textContent = scores.O; if (scoreTie) scoreTie.textContent = scores.T; }
@@ -1193,10 +1196,44 @@
       return null;
     }
 
+    // Lightweight AI: win if possible, else block, else take center, else a corner, else a side
+    function pickBestMove(b, ai) {
+      const human = ai === 'X' ? 'O' : 'X';
+      const wins = [ [0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6] ];
+
+      // Try to win
+      for (const [a,c,d] of wins) {
+        const line = [a,c,d];
+        const vals = line.map(i=>b[i]);
+        if (vals.filter(v=>v===ai).length===2 && vals.includes(null)) {
+          return line[vals.indexOf(null)];
+        }
+      }
+      // Try to block human win
+      for (const [a,c,d] of wins) {
+        const line = [a,c,d];
+        const vals = line.map(i=>b[i]);
+        if (vals.filter(v=>v===human).length===2 && vals.includes(null)) {
+          return line[vals.indexOf(null)];
+        }
+      }
+      // Take center
+      if (b[4] === null) return 4;
+      // Take a corner
+      const corners = [0,2,6,8].filter(i=>b[i]===null);
+      if (corners.length) return corners[Math.floor(Math.random()*corners.length)];
+      // Take a side
+      const sides = [1,3,5,7].filter(i=>b[i]===null);
+      if (sides.length) return sides[Math.floor(Math.random()*sides.length)];
+      return null;
+    }
+
     function handleCellClick(e) {
-      try { window.__devLog && window.__devLog(`TicTacToe: cell click idx=${e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.index : 'n/a'} running=${running}`); } catch(_){}
+      try { window.__devLog && window.__devLog(`TicTacToe: cell click idx=${e.currentTarget && e.currentTarget.dataset ? e.currentTarget.dataset.index : 'n/a'} running=${running}`); } catch(_){ }
       const idx = parseInt(e.currentTarget.dataset.index, 10);
       if (!running) return;
+      // Only allow human moves on their turn (X)
+      if (vsAI && turn !== 'X') return;
       if (board[idx]) return; // already occupied
       board[idx] = turn;
       e.currentTarget.classList.add(turn.toLowerCase());
@@ -1230,6 +1267,40 @@
       // next turn
       turn = turn === 'X' ? 'O' : 'X';
       updateStatus();
+
+      // If playing vs AI and it's AI's turn, perform AI move after a brief delay
+      if (vsAI && turn === aiPlayer) {
+        if (botThinkingEl) { botThinkingEl.classList.remove('hidden'); botThinkingEl.setAttribute('aria-hidden','false'); }
+        setTimeout(() => {
+          try {
+            const move = pickBestMove(board, aiPlayer);
+            if (move != null) {
+              board[move] = aiPlayer;
+              const cell = boardEl[move];
+              if (cell) { cell.classList.add('o'); cell.textContent = 'O'; }
+              const w2 = checkWin(board);
+              if (w2) {
+                running = false;
+                updateStatus();
+                scores[w2]++; updateScores();
+                const wins = [ [0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6] ];
+                for (const w of wins) { const [a,b1,c] = w; if (board[a] && board[a] === board[b1] && board[a] === board[c]) { [a,b1,c].forEach(i=>{ boardEl[i].classList.add('winning'); }); break; } }
+              } else if (board.every(Boolean)) {
+                running = false;
+                scores.T++; updateScores();
+                if (statusEl) statusEl.textContent = 'Tie!';
+              } else {
+                turn = 'X'; updateStatus();
+              }
+            } else {
+              // fallback: no move
+              turn = 'X'; updateStatus();
+            }
+          } finally {
+            if (botThinkingEl) { botThinkingEl.classList.add('hidden'); botThinkingEl.setAttribute('aria-hidden','true'); }
+          }
+        }, 350);
+      }
     }
 
     function resetBoard() {

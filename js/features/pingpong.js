@@ -57,4 +57,15 @@ if (typeof window !== 'undefined') {
   window.App.debug && window.App.debug('pingpong module loaded. initPingPongGame registered');
 }
 
+// Safe auto-init with one-time guard for environments where loader timing differs
+if (typeof document !== 'undefined' && document.getElementById('pingpongCanvas')) {
+  try {
+    if (!window.__pingpongInited) {
+      window.__pingpongInited = true;
+      initPingPongGame();
+      window.App && window.App.debug && window.App.debug('pingpong auto-init: success');
+    }
+  } catch (e) { console.warn('pingpong auto-init failed', e); }
+}
+
 export { initPingPongGame };

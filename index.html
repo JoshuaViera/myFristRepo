@@ -49,15 +49,6 @@
       </div>
     </div>
 
-  <script>
-    // Bootstrap global App namespace and no-op confetti before loader
-    window.App = window.App || { DEBUG: false, features: {}, utils: {} };
-    window.App.features = window.App.features || {};
-    window.App.utils = window.App.utils || {};
-    window.updateConfetti = window.updateConfetti || function(){};
-    // Expose global variable for console convenience
-    try { /* eslint-disable no-var */ var App = window.App; /* eslint-enable */ } catch(_){}
-  </script>
-  <script type="module" src="js/loader.js?v=tttfix2"></script>
+  <script type="module" src="js/loader.js"></script>
   </body>
 </html>

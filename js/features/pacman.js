@@ -88,4 +88,15 @@ if (typeof window !== 'undefined') {
   window.App.debug && window.App.debug('pacman module loaded. initPacman registered');
 }
 
+// Safe auto-init with one-time guard for environments where loader timing differs
+if (typeof document !== 'undefined' && document.getElementById('pacmanCanvas')) {
+  try {
+    if (!window.__pacmanInited) {
+      window.__pacmanInited = true;
+      initPacman();
+      window.App && window.App.debug && window.App.debug('pacman auto-init: success');
+    }
+  } catch (e) { console.warn('pacman auto-init failed', e); }
+}
+
 export { initPacman, startPacman, resetPacman };
